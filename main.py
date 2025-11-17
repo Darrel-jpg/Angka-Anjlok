@@ -1,12 +1,10 @@
+import pygame
 import random
 import math
-import sys
-import pygame
-import cairo
 
-# -----------------------
-# Konfigurasi dasar
-# -----------------------
+from assets import render_bins_cairo, render_falling_block
+
+#config
 WIDTH, HEIGHT = 480, 640
 FPS = 60
 BIN_COUNT = 4
@@ -34,39 +32,7 @@ TITLE_FONT = pygame.font.SysFont('Arial', 36, bold=True)
 BTN_FONT = pygame.font.SysFont('Arial', 22, bold=True)
 SMALL_FONT = pygame.font.SysFont('Arial', 16)
 
-# -----------------------
-def cairo_surface_to_pygame(surf: cairo.ImageSurface) -> pygame.Surface:
-    buf = surf.get_data()
-    py_surf = pygame.image.frombuffer(buf, (surf.get_width(), surf.get_height()), 'ARGB')
-    return py_surf.convert_alpha()
-
-def render_bins_cairo(width, height, bin_rects, bin_labels):
-    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
-    ctx = cairo.Context(surf)
-    ctx.set_source_rgba(0, 0, 0, 0)
-    ctx.paint()
-
-    for r, label in zip(bin_rects, bin_labels):
-        x, y, w, h = r
-        ctx.set_source_rgb(BIN_COLOR[0]/255, BIN_COLOR[1]/255, BIN_COLOR[2]/255)
-        ctx.rectangle(x, y, w, h)
-        ctx.fill_preserve()
-        ctx.set_line_width(2)
-        ctx.set_source_rgb(BIN_BORDER[0]/255, BIN_BORDER[1]/255, BIN_BORDER[2]/255)
-        ctx.stroke()
-
-        ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
-        ctx.set_font_size(18)
-        tx = ctx.text_extents(label)
-        tx_x = x + (w - tx.x_advance) / 2
-        tx_y = y + h/2 + tx.height/2
-        ctx.set_source_rgb(TEXT_COLOR[0]/255, TEXT_COLOR[1]/255, TEXT_COLOR[2]/255)
-        ctx.move_to(tx_x, tx_y)
-        ctx.show_text(label)
-
-    return cairo_surface_to_pygame(surf)
-
-# -----------------------
+#logic
 class Problem:
     def __init__(self, expr, answer):
         self.expr = expr
@@ -77,9 +43,11 @@ class FallingNumber:
         self.value = value
         self.x = x
         self.y = y
-        self.w = 56
-        self.h = 40
-        self.font = pygame.font.SysFont('Arial', 20, bold=True)
+
+        # gunakan asset
+        self.image = render_falling_block(value)
+        self.w = self.image.get_width()
+        self.h = self.image.get_height()
 
     def rect(self):
         return pygame.Rect(self.x, self.y, self.w, self.h)
@@ -91,13 +59,8 @@ class FallingNumber:
         self.y += FALL_SPEED * dt
 
     def draw(self, surf):
-        r = pygame.Rect(self.x, self.y, self.w, self.h)
-        pygame.draw.rect(surf, (60,60,72), r, border_radius=6)
-        pygame.draw.rect(surf, (110,110,130), r, 2, border_radius=6)
-        txt = self.font.render(str(self.value), True, TEXT_COLOR)
-        surf.blit(txt, txt.get_rect(center=r.center))
+        surf.blit(self.image, (self.x, self.y))
 
-# -----------------------
 class Game:
     def __init__(self, allowed_ops):
         global FALL_SPEED
@@ -106,7 +69,7 @@ class Game:
         self.allowed_ops = allowed_ops
         self.running = True
         self.score = 0
-        self.lives = 3
+        self.lives = 10000
         self.bins = []
         self.problems = []
         self.falling = None
@@ -148,13 +111,20 @@ class Game:
             self.problems.append(Problem(expr, ans))
 
         bin_labels = []
+        local_rects = []
+
         for i, p in enumerate(self.problems):
             x = i * bin_w + 8
             w = bin_w - 16
-            self.bins.append((x, bin_y, w, bin_h))
-            bin_labels.append(str(p.answer))
+            rect = (x, bin_y, w, bin_h)
+            self.bins.append(rect)
+            
+            local_y = bin_y - (HEIGHT - bottom_h)
+            local_rects.append((x, local_y, w, bin_h))
+            bin_labels.append(p.expr)
 
-        self.bin_surface = render_bins_cairo(WIDTH, bottom_h, self.bins, bin_labels)
+        self.bin_surface = render_bins_cairo(WIDTH, bottom_h, local_rects, bin_labels)
+
 
     def spawn_falling(self):
         target = random.choice(self.problems)
@@ -210,11 +180,9 @@ class Game:
     def draw(self, surf):
         surf.fill(BG_COLOR)
 
-        # Lives di kiri atas
         lives_s = HUD_FONT.render(f"Lives: {self.lives}", True, TEXT_COLOR)
         surf.blit(lives_s, (WIDTH-60, 10))
 
-        # Score di bawah Lives
         score_s = HUD_FONT.render(f"Score: {self.score}", True, TEXT_COLOR)
         surf.blit(score_s, (WIDTH-65, 32))
 
@@ -222,11 +190,6 @@ class Game:
             self.falling.draw(surf)
 
         surf.blit(self.bin_surface, (0, HEIGHT - self.bin_surface.get_height()))
-
-        for i, p in enumerate(self.problems):
-            x, y, w, h = self.bins[i]
-            expr_txt = SMALL_FONT.render(p.expr, True, TEXT_COLOR)
-            surf.blit(expr_txt, expr_txt.get_rect(center=(x + w/2, y - 18)))
 
         if self.speed_message_timer > 0:
             msg_font = pygame.font.SysFont('Arial', 22, bold=True)
@@ -236,9 +199,7 @@ class Game:
     def is_game_over(self):
         return self.lives <= 0
 
-# -----------------------
-# MENU UI helpers
-# -----------------------
+#menu ui
 def draw_button(surface, rect, text, mouse_pos):
     if rect.collidepoint(mouse_pos):
         color = BUTTON_HOVER
@@ -257,9 +218,6 @@ def draw_small_button(surface, rect, text, mouse_pos):
     label = SMALL_FONT.render(text, True, (255,255,255))
     surface.blit(label, label.get_rect(center=rect.center))
 
-# -----------------------
-# Main Menu
-# -----------------------
 def main_menu():
     ops_list = [
         ("Penjumlahan (+)", ['+']),
@@ -288,7 +246,7 @@ def main_menu():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                sys.exit()
+                return
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     for rect, label, ops in buttons:
@@ -298,12 +256,7 @@ def main_menu():
         pygame.display.flip()
         clock.tick(60)
 
-# -----------------------
-# Pause UI
-# -----------------------
 def pause_popup(surface, center_rect, mouse_pos):
-    # center_rect = pygame.Rect(center_x - w/2, center_y - h/2, w, h)
-    # draw panel
     panel = pygame.Surface((center_rect.width, center_rect.height), pygame.SRCALPHA)
     panel.fill((30, 30, 36, 230))  # slightly transparent panel
     surface.blit(panel, center_rect.topleft)
@@ -337,9 +290,9 @@ def blur_surface(surface, scale_factor=0.1):
     # upscale
     blurred = pygame.transform.smoothscale(small, (w, h))
 
-    # optional: gelapkan sedikit
+    # blur
     dark = pygame.Surface((w, h), pygame.SRCALPHA)
-    dark.fill((0, 0, 0, 100))  # overlay sedikit
+    dark.fill((0, 0, 0, 100))
     blurred.blit(dark, (0, 0))
 
     return blurred
@@ -353,11 +306,9 @@ def main():
     hold_left = False
     hold_right = False
     paused = False
-
-    # pause button (UI) area (top-right)
+    
     pause_btn_rect = pygame.Rect(8, 8, 48, 32)
-
-    # popup rect placeholders
+    
     resume_rect = restart_rect = menu_rect = None
 
     while True:
@@ -372,24 +323,19 @@ def main():
             resume_rect = restart_rect = menu_rect = None
             continue
 
-        # ---------------- GAME LOOP ----------------
+        # game loop
         mouse_pos = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                sys.exit()
+                return
 
-            # Mouse clicks: handle pause icon or popup buttons (only here)
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # click pause UI icon (only when not paused and game running)
                 if pause_btn_rect.collidepoint(mouse_pos) and not paused and not game.is_game_over():
                     paused = True
-                # if paused, check popup buttons (resume/restart/menu)
                 elif paused:
-                    # ensure popup rects exist
                     if resume_rect and resume_rect.collidepoint(mouse_pos):
                         paused = False
-                        # clear popup rects
                         resume_rect = restart_rect = menu_rect = None
                     elif restart_rect and restart_rect.collidepoint(mouse_pos):
                         game = Game(game.allowed_ops)
@@ -400,7 +346,6 @@ def main():
                         paused = False
                         resume_rect = restart_rect = menu_rect = None
 
-            # Keyboard events
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     hold_left = True
@@ -413,11 +358,9 @@ def main():
                 elif event.key == pygame.K_SPACE and game.falling and not paused:
                     game.falling.y = HEIGHT
                 elif event.key == pygame.K_ESCAPE:
-                    # ESC toggles pause (only if game not over)
                     if not game.is_game_over():
                         paused = not paused
                         if not paused:
-                            # if resuming, clear popup rects
                             resume_rect = restart_rect = menu_rect = None
 
             elif event.type == pygame.KEYUP:
@@ -428,19 +371,16 @@ def main():
 
         move_dir = -1 if hold_left and not hold_right else (1 if hold_right and not hold_left else 0)
 
-        # Update only when not paused and not game over
         if not paused and not game.is_game_over():
             game.update(dt, move_dir)
 
-        # Draw game
         game.draw(screen)
 
-        # Draw pause UI icon (top-right)
+        # Draw pause
         pygame.draw.rect(screen, (40,40,48), pause_btn_rect, border_radius=6)
         icon_text = SMALL_FONT.render("II", True, (220,220,220))
         screen.blit(icon_text, icon_text.get_rect(center=pause_btn_rect.center))
 
-        # If game over, draw overlay message
         if game.is_game_over():
             ov = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
             ov.fill((0, 0, 0, 160))
@@ -451,20 +391,16 @@ def main():
             tt = HUD_FONT.render("Tekan R untuk kembali ke menu", True, (220,220,220))
             screen.blit(t, t.get_rect(center=(WIDTH//2, HEIGHT//2 - 10)))
             screen.blit(tt, tt.get_rect(center=(WIDTH//2, HEIGHT//2 + 28)))
-
-        # If paused, draw blackout overlay (hiding gameplay) and popup
+            
         if paused:
-            # ambil screen yang sudah tergambar dan blur
             screen_copy = screen.copy()
             blurred_bg = blur_surface(screen_copy, scale_factor=0.08)
             screen.blit(blurred_bg, (0, 0))
 
-            # draw popup panel and capture the returned rects for click detection
             panel_w, panel_h = 360, 320
             panel_rect = pygame.Rect((WIDTH//2 - panel_w//2, HEIGHT//2 - panel_h//2, panel_w, panel_h))
             resume_rect, restart_rect, menu_rect = pause_popup(screen, panel_rect, mouse_pos)
 
         pygame.display.flip()
 
-# -----------------------
 main()
