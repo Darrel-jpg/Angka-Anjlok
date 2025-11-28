@@ -4,7 +4,7 @@ import pygame
 import random
 
 # ==============================================================================
-# UTILITY: KONVERSI CAIRO KE PYGAME
+# UTILITY
 # ==============================================================================
 def cairo_surface_to_pygame(surf: cairo.ImageSurface) -> pygame.Surface:
     buf = surf.get_data()
@@ -14,62 +14,227 @@ def cairo_surface_to_pygame(surf: cairo.ImageSurface) -> pygame.Surface:
         'BGRA'
     ).convert_alpha()
 
+def draw_wood_texture(ctx, w, h):
+    """Menggambar tekstur kayu dasar pada context cairo"""
+    # Warna dasar kayu gelap
+    ctx.set_source_rgb(0.28, 0.18, 0.12) 
+    ctx.rectangle(0, 0, w, h)
+    ctx.fill()
+    
+    # Serat kayu
+    ctx.set_source_rgba(0.15, 0.08, 0.05, 0.4)
+    ctx.set_line_width(2)
+    for _ in range(int(h / 3)):
+        y = random.randint(0, int(h))
+        ctx.move_to(0, y)
+        # Kurva bezier acak horizontal
+        ctx.curve_to(w*0.3, y + random.randint(-10, 10), 
+                     w*0.7, y + random.randint(-10, 10), 
+                     w, y + random.randint(-5, 5))
+        ctx.stroke()
+
 # ==============================================================================
-# 1. MENU BUTTON (Sama seperti sebelumnya)
+# 1. UI: TOMBOL KAYU (WOODEN BUTTON)
 # ==============================================================================
 def render_menu_button(width, height, text, hover=False):
-    radius = 12
-    line_width = 2
-    
-    if hover:
-        color_top = (0.45, 0.45, 0.55, 1)
-        color_bottom = (0.32, 0.32, 0.40, 1)
-        border_color = (0.60, 0.60, 0.70, 1)
-    else:
-        color_top = (0.28, 0.28, 0.35, 1)
-        color_bottom = (0.18, 0.18, 0.25, 1)
-        border_color = (0.15, 0.15, 0.20, 1)
-
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height))
     ctx = cairo.Context(surf)
+    
+    # Margin agar ada efek timbul
+    m = 4
+    w, h = width - 2*m, height - 2*m
+    
+    # Bayangan Drop Shadow
+    ctx.set_source_rgba(0, 0, 0, 0.5)
+    ctx.rectangle(m+4, m+4, w, h)
+    ctx.fill()
+    
+    # Papan Kayu Utama
+    ctx.save()
+    ctx.translate(m, m)
+    
+    # Clip bentuk papan
+    ctx.rectangle(0, 0, w, h)
+    ctx.clip()
+    
+    # Gambar Tekstur Kayu
+    draw_wood_texture(ctx, w, h)
+    
+    # Highlight/Hover effect
+    if hover:
+        ctx.set_source_rgba(1, 1, 1, 0.15) # Putih transparan
+        ctx.paint()
+        border_color = (0.8, 0.6, 0.3) # Emas
+    else:
+        border_color = (0.4, 0.3, 0.2) # Coklat tua
 
-    rect_x, rect_y = line_width / 2.0, line_width / 2.0
-    rect_w, rect_h = width - line_width, height - line_width
+    # Frame/Bevel Dalam
+    ctx.set_source_rgba(0, 0, 0, 0.3)
+    ctx.rectangle(0, 0, w, h)
+    ctx.set_line_width(4)
+    ctx.stroke()
+    
+    # Paku di sudut (Rivets)
+    for px, py in [(10, 10), (w-10, 10), (10, h-10), (w-10, h-10)]:
+        ctx.arc(px, py, 3, 0, 2*math.pi)
+        ctx.set_source_rgb(0.7, 0.7, 0.7) # Silver
+        ctx.fill()
 
-    # Rounded Path
-    ctx.new_path()
-    ctx.arc(rect_x + rect_w - radius, rect_y + rect_h - radius, radius, 0, math.pi/2)
-    ctx.arc(rect_x + radius, rect_y + rect_h - radius, radius, math.pi/2, math.pi)
-    ctx.arc(rect_x + radius, rect_y + radius, radius, math.pi, 3*math.pi/2)
-    ctx.arc(rect_x + rect_w - radius, rect_y + radius, radius, 3*math.pi/2, 2*math.pi)
-    ctx.close_path()
-
-    pat = cairo.LinearGradient(0, 0, 0, height)
-    pat.add_color_stop_rgba(0, *color_top)
-    pat.add_color_stop_rgba(1, *color_bottom)
-    ctx.set_source(pat)
-    ctx.fill_preserve()
-
-    ctx.set_source_rgba(*border_color)
-    ctx.set_line_width(line_width)
+    ctx.restore()
+    
+    # Border Luar
+    ctx.set_source_rgb(*border_color)
+    ctx.set_line_width(2)
+    ctx.rectangle(m, m, w, h)
     ctx.stroke()
 
-    ps = cairo_surface_to_pygame(surf) 
-    pygame_font = pygame.font.SysFont("Arial", 22, bold=True)
+    ps = cairo_surface_to_pygame(surf)
     
-    text_shadow = pygame_font.render(text, True, (0, 0, 0))
-    text_shadow.set_alpha(100)
-    shadow_rect = text_shadow.get_rect(center=(width//2 + 1, height//2 + 2))
-    ps.blit(text_shadow, shadow_rect)
-
-    text_surf = pygame_font.render(text, True, (255, 255, 255))
-    text_rect = text_surf.get_rect(center=(width//2, height//2))
-    ps.blit(text_surf, text_rect)
+    # Font
+    # Menggunakan font Serif agar lebih fantasy
+    font = pygame.font.SysFont("Georgia", 20, bold=True)
+    
+    # Text Shadow (Hitam)
+    ts = font.render(text, True, (0, 0, 0))
+    ps.blit(ts, ts.get_rect(center=(width//2 + 1, height//2 + 2)))
+    
+    # Text Color (Krem/Emas)
+    text_col = (255, 235, 200) if hover else (220, 200, 180)
+    tf = font.render(text, True, text_col)
+    ps.blit(tf, tf.get_rect(center=(width//2, height//2)))
 
     return ps
 
 # ==============================================================================
-# 2. BACKGROUND (DITINGKATKAN: FANTASY FOREST FLOOR)
+# 2. UI: PAPAN SKOR & NYAWA (HUD PANEL)
+# ==============================================================================
+def render_hud_panel(width, height):
+    """Panel kayu kecil untuk background skor"""
+    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+    ctx = cairo.Context(surf)
+    
+    # Rounded corners
+    r = 10
+    ctx.new_path()
+    ctx.arc(width - r, r, r, -math.pi/2, 0)
+    ctx.arc(width - r, height - r, r, 0, math.pi/2)
+    ctx.arc(r, height - r, r, math.pi/2, math.pi)
+    ctx.arc(r, r, r, math.pi, 3*math.pi/2)
+    ctx.close_path()
+    
+    ctx.save()
+    ctx.clip_preserve()
+    draw_wood_texture(ctx, width, height)
+    ctx.restore()
+    
+    # Border Emas
+    ctx.set_source_rgb(0.8, 0.6, 0.2)
+    ctx.set_line_width(3)
+    ctx.stroke()
+    
+    return cairo_surface_to_pygame(surf)
+
+def render_heart_icon(size):
+    """Icon hati merah berkilau untuk nyawa"""
+    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    ctx = cairo.Context(surf)
+    
+    cx, cy = size/2, size/2 + size*0.1
+    r = size * 0.45
+    
+    # Gambar bentuk hati
+    ctx.move_to(cx, cy + r * 0.8)
+    ctx.curve_to(cx - r, cy, cx - r, cy - r, cx, cy - r * 0.5)
+    ctx.curve_to(cx + r, cy - r, cx + r, cy, cx, cy + r * 0.8)
+    ctx.close_path()
+    
+    # Gradient Merah
+    pat = cairo.RadialGradient(cx - size*0.1, cy - size*0.1, size*0.1, cx, cy, size)
+    pat.add_color_stop_rgb(0, 1.0, 0.4, 0.4) # Pinkish highlight
+    pat.add_color_stop_rgb(0.6, 0.8, 0.0, 0.0) # Merah darah
+    pat.add_color_stop_rgb(1, 0.4, 0.0, 0.0) # Merah gelap
+    ctx.set_source(pat)
+    ctx.fill_preserve()
+    
+    # Outline Hitam Tipis
+    ctx.set_source_rgba(0.2, 0, 0, 0.8)
+    ctx.set_line_width(1.5)
+    ctx.stroke()
+    
+    return cairo_surface_to_pygame(surf)
+
+def render_pause_button_asset(size, hover=False):
+    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    ctx = cairo.Context(surf)
+    
+    cx, cy = size/2, size/2
+    r = size/2 - 2
+    
+    # Lingkaran Kayu
+    ctx.arc(cx, cy, r, 0, 2*math.pi)
+    ctx.save()
+    ctx.clip()
+    draw_wood_texture(ctx, size, size)
+    ctx.restore()
+    
+    # Cincin Logam
+    ctx.new_path()
+    ctx.arc(cx, cy, r, 0, 2*math.pi)
+    ctx.set_line_width(3)
+    color = (1.0, 0.9, 0.5) if hover else (0.7, 0.6, 0.4)
+    ctx.set_source_rgb(*color)
+    ctx.stroke()
+    
+    # Simbol Pause (II)
+    bar_w = size * 0.15
+    bar_h = size * 0.4
+    ctx.rectangle(cx - bar_w*1.5, cy - bar_h/2, bar_w, bar_h)
+    ctx.rectangle(cx + bar_w*0.5, cy - bar_h/2, bar_w, bar_h)
+    ctx.set_source_rgb(*color)
+    ctx.fill()
+    
+    return cairo_surface_to_pygame(surf)
+
+# ==============================================================================
+# 3. UI: KERTAS PERKAMEN (PARCHMENT SCROLL)
+# ==============================================================================
+def render_parchment_scroll(w, h):
+    """Background menu utama dan pause"""
+    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+    ctx = cairo.Context(surf)
+    
+    # Shadow drop
+    ctx.set_source_rgba(0,0,0,0.6)
+    ctx.rectangle(10, 10, w-20, h-20)
+    ctx.fill()
+    
+    # Kertas (Sedikit lebih kecil dari shadow)
+    margin = 5
+    pw, ph = w - 20, h - 20
+    ctx.rectangle(5, 5, pw, ph)
+    
+    # Warna krem tua
+    ctx.set_source_rgb(0.90, 0.85, 0.70)
+    ctx.fill_preserve()
+    
+    # Texture noise/kotor
+    for _ in range(500):
+        nx = random.randint(5, int(pw))
+        ny = random.randint(5, int(ph))
+        ctx.set_source_rgba(0.5, 0.4, 0.3, 0.1)
+        ctx.arc(nx, ny, random.randint(2, 5), 0, 2*math.pi)
+        ctx.fill()
+        
+    # Border garis tinta pudar
+    ctx.rectangle(15, 15, pw-20, ph-20)
+    ctx.set_source_rgba(0.4, 0.3, 0.2, 0.5)
+    ctx.set_line_width(2)
+    ctx.stroke()
+    
+    return cairo_surface_to_pygame(surf)
+
+# ==============================================================================
+# 4. BACKGROUND (ASLI - SUDAH BAGUS)
 # ==============================================================================
 def create_cairo_background(width, height):
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height))
@@ -155,7 +320,7 @@ def create_cairo_background(width, height):
     return cairo_surface_to_pygame(surface)
 
 # ==============================================================================
-# 3. BIN / WADAH (DIUBAH MENJADI LEATHER POUCH/KANTONG KULIT)
+# 5. BIN & COIN (ASLI - SUDAH BAGUS)
 # ==============================================================================
 def render_bins_cairo(width, height, bin_rects, bin_labels):
     """
@@ -382,9 +547,6 @@ def render_bins_cairo(width, height, bin_rects, bin_labels):
 
     return cairo_surface_to_pygame(surface)
 
-# ==============================================================================
-# 4. FALLING BLOCK / COIN (Sama seperti sebelumnya)
-# ==============================================================================
 def render_falling_block(value):
     w, h = 70, 70
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
