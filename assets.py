@@ -9,6 +9,155 @@ def cairo_surface_to_pygame(surf: cairo.ImageSurface) -> pygame.Surface:
     py_surf = pygame.image.frombuffer(buf, (surf.get_width(), surf.get_height()), 'ARGB')
     return py_surf.convert_alpha()
 
+def render_menu_button(width, height, text, hover=False):
+    # 1. Konfigurasi Warna & Style
+    radius = 12
+    line_width = 2
+    
+    if hover:
+        # Gradasi Hover (Lebih Terang)
+        color_top = (0.45, 0.45, 0.55, 1)
+        color_bottom = (0.32, 0.32, 0.40, 1)
+        border_color = (0.60, 0.60, 0.70, 1)
+    else:
+        # Gradasi Normal (Lebih Gelap)
+        color_top = (0.28, 0.28, 0.35, 1)
+        color_bottom = (0.18, 0.18, 0.25, 1)
+        border_color = (0.15, 0.15, 0.20, 1)
+
+    # 2. Setup Cairo Surface
+    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height))
+    ctx = cairo.Context(surf)
+
+    # Menghitung area gambar (dikurangi line_width agar border tidak terpotong)
+    # Offset 1 pixel untuk ketajaman garis (anti-aliasing)
+    rect_x = line_width / 2.0
+    rect_y = line_width / 2.0
+    rect_w = width - line_width
+    rect_h = height - line_width
+
+    # 3. Membuat Path Rounded Rectangle
+    ctx.new_path()
+    # Kanan Bawah
+    ctx.arc(rect_x + rect_w - radius, rect_y + rect_h - radius, radius, 0, math.pi/2)
+    # Kiri Bawah
+    ctx.arc(rect_x + radius, rect_y + rect_h - radius, radius, math.pi/2, math.pi)
+    # Kiri Atas
+    ctx.arc(rect_x + radius, rect_y + radius, radius, math.pi, 3*math.pi/2)
+    # Kanan Atas
+    ctx.arc(rect_x + rect_w - radius, rect_y + radius, radius, 3*math.pi/2, 2*math.pi)
+    ctx.close_path()
+
+    # 4. Mengisi dengan Gradasi (Linear Gradient)
+    # Gradasi dari atas ke bawah untuk efek cahaya
+    pat = cairo.LinearGradient(0, 0, 0, height)
+    pat.add_color_stop_rgba(0, *color_top)      # Atas
+    pat.add_color_stop_rgba(1, *color_bottom)   # Bawah
+    
+    ctx.set_source(pat)
+    ctx.fill_preserve() # Simpan path untuk digunakan border
+
+    # 5. Menggambar Border (Stroke)
+    ctx.set_source_rgba(*border_color)
+    ctx.set_line_width(line_width)
+    ctx.stroke()
+
+    # 6. Render Text via Pygame
+    # Konversi ke surface pygame
+    # Pastikan fungsi 'cairo_surface_to_pygame' sudah didefinisikan sebelumnya atau diimpor
+    ps = cairo_surface_to_pygame(surf) 
+    
+    pygame_font = pygame.font.SysFont("Arial", 22, bold=True)
+    
+    # Text Shadow (Hitam transparan) untuk kedalaman
+    text_shadow = pygame_font.render(text, True, (0, 0, 0))
+    text_shadow.set_alpha(100) # Transparansi bayangan
+    shadow_rect = text_shadow.get_rect(center=(width//2 + 1, height//2 + 2))
+    ps.blit(text_shadow, shadow_rect)
+
+    # Text Utama (Putih)
+    text_surf = pygame_font.render(text, True, (255, 255, 255))
+    text_rect = text_surf.get_rect(center=(width//2, height//2))
+    ps.blit(text_surf, text_rect)
+
+    return ps
+
+def create_cairo_background(width, height):
+    # Setup Surface Cairo
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height))
+    ctx = cairo.Context(surface)
+
+    # --- LAYER 1: LANGIT (Sky) ---
+    # Gradasi dari biru langit cerah di atas ke biru yang lebih muda di cakrawala
+    sky_pat = cairo.LinearGradient(0, 0, 0, height)
+    sky_pat.add_color_stop_rgb(0, 0.4, 0.7, 1.0)  # Biru Langit Cerah (Atas)
+    sky_pat.add_color_stop_rgb(1, 0.7, 0.9, 1.0)  # Biru Muda Pucat (Bawah)
+    
+    ctx.rectangle(0, 0, width, height)
+    ctx.set_source(sky_pat)
+    ctx.fill()
+
+    # --- LAYER 2: MATAHARI (Sun) ---
+    sun_x = width * 0.85  # Posisi X (85% ke kanan)
+    sun_y = height * 0.2  # Posisi Y (20% dari atas)
+    sun_radius = height * 0.1 # Radius matahari
+
+    ctx.set_source_rgb(1.0, 0.9, 0.2) # Kuning cerah
+    ctx.new_path()
+    ctx.arc(sun_x, sun_y, sun_radius, 0, 2 * math.pi)
+    ctx.fill()
+    
+    # (Opsional) Tambahkan sedikit "glow" oranye di sekitar matahari
+    # ctx.set_source_rgba(1.0, 0.7, 0.1, 0.3) # Oranye transparan
+    # ctx.set_line_width(8)
+    # ctx.stroke() # Gunakan stroke pada path lingkaran yang sama
+
+    # --- LAYER 3: BUKIT BELAKANG (Back Hills) ---
+    # Warna hijau sedikit lebih gelap/kebiruan untuk kesan jauh
+    ctx.set_source_rgb(0.3, 0.7, 0.4) 
+    
+    ctx.new_path()
+    # Mulai dari kiri tengah
+    ctx.move_to(0, height * 0.6)
+    
+    # Gambar kurva bergelombang (Bezier Curve)
+    # curve_to(control_point_1_x, cp1_y, control_point_2_x, cp2_y, end_x, end_y)
+    ctx.curve_to(width * 0.3, height * 0.4,  # Titik kontrol 1 (puncak bukit 1)
+                 width * 0.7, height * 0.7,  # Titik kontrol 2 (lembah)
+                 width, height * 0.55)       # Titik akhir (kanan)
+                 
+    # Tutup path ke sudut bawah agar bisa di-fill
+    ctx.line_to(width, height)
+    ctx.line_to(0, height)
+    ctx.close_path()
+    ctx.fill()
+
+    # --- LAYER 4: BUKIT DEPAN (Front Hills) ---
+    # Warna hijau cerah, segar
+    ctx.set_source_rgb(0.4, 0.8, 0.3) 
+
+    ctx.new_path()
+    # Mulai dari kiri, sedikit lebih rendah dari bukit belakang
+    ctx.move_to(0, height * 0.75)
+    
+    # Kurva bukit depan, lebih landai
+    ctx.curve_to(width * 0.4, height * 0.85, # Lembah kecil
+                 width * 0.6, height * 0.65, # Puncak bukit depan
+                 width, height * 0.8)        # Titik akhir
+                 
+    # Tutup path ke bawah
+    ctx.line_to(width, height)
+    ctx.line_to(0, height)
+    ctx.close_path()
+    ctx.fill()
+
+    # --- Convert Cairo → Pygame Surface ---
+    # Memastikan data di-flush sebelum diambil
+    surface.flush() 
+    buf = surface.get_data()
+    # Menggunakan "ARGB" karena format surface cairo di atas adalah ARGB32
+    return pygame.image.frombuffer(buf, (int(width), int(height)), "ARGB")
+
 # Render tempat jawaban (bins) dengan desain lebih modern
 def render_bins_cairo(width, height, bin_rects, bin_labels):
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
