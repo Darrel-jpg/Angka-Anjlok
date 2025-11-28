@@ -227,9 +227,9 @@ def main_menu():
     ]
 
     buttons = []
-    start_y = 220
+    start_y = 250
     for i, (label, ops) in enumerate(ops_list):
-        rect = pygame.Rect(100, start_y + i*70, 280, 50)
+        rect = pygame.Rect(150, start_y + i*70, 280, 50)
         buttons.append((rect, label, ops))
 
     while True:

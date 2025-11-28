@@ -96,16 +96,6 @@ def create_cairo_background(width, height):
     ctx.rectangle(0, 0, width, height)
     ctx.set_source(sky_pat)
     ctx.fill()
-
-    # --- LAYER 2: MATAHARI (Sun) ---
-    sun_x = width * 0.85  # Posisi X (85% ke kanan)
-    sun_y = height * 0.2  # Posisi Y (20% dari atas)
-    sun_radius = height * 0.1 # Radius matahari
-
-    ctx.set_source_rgb(1.0, 0.9, 0.2) # Kuning cerah
-    ctx.new_path()
-    ctx.arc(sun_x, sun_y, sun_radius, 0, 2 * math.pi)
-    ctx.fill()
     
     # (Opsional) Tambahkan sedikit "glow" oranye di sekitar matahari
     # ctx.set_source_rgba(1.0, 0.7, 0.1, 0.3) # Oranye transparan
@@ -207,21 +197,6 @@ def render_bins_cairo(width, height, bin_rects, bin_labels):
         ctx.set_line_width(3)
         ctx.stroke()
 
-        # Highlight gloss effect
-        gloss_grad = cairo.LinearGradient(x, y, x, y + h * 0.5)
-        gloss_grad.add_color_stop_rgba(0, 1, 1, 1, 0.5)
-        gloss_grad.add_color_stop_rgba(1, 1, 1, 1, 0)
-        
-        ctx.set_source(gloss_grad)
-        rounded_rectangle(ctx, x + 5, y + 5, w - 10, h * 0.4, h * 0.15)
-        ctx.fill()
-
-        # Icon dekoratif di pojok
-        icon_size = h * 0.15
-        ctx.set_source_rgba(1, 1, 1, 0.3)
-        ctx.arc(x + w - icon_size * 2, y + icon_size * 1.5, icon_size, 0, 2 * math.pi)
-        ctx.fill()
-
         # Label dengan shadow
         ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
         ctx.set_font_size(h * 0.35)
@@ -308,15 +283,6 @@ def render_falling_block(value):
 
     ctx.set_source(grad)
     draw_shape(ctx, shape, cx, cy, 32)
-    ctx.fill()
-
-    # Highlight effect
-    highlight_grad = cairo.RadialGradient(cx - 10, cy - 10, 2, cx - 10, cy - 10, 15)
-    highlight_grad.add_color_stop_rgba(0, 1, 1, 1, 0.6)
-    highlight_grad.add_color_stop_rgba(1, 1, 1, 1, 0)
-    
-    ctx.set_source(highlight_grad)
-    ctx.arc(cx - 8, cy - 8, 12, 0, 2 * math.pi)
     ctx.fill()
 
     # Border outline
