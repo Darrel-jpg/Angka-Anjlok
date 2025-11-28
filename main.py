@@ -3,6 +3,9 @@ import random
 import math
 
 from assets import render_bins_cairo, render_falling_block
+from assets import render_menu_button
+from assets import create_cairo_background
+
 
 #config
 WIDTH, HEIGHT = 480, 640
@@ -69,7 +72,7 @@ class Game:
         self.allowed_ops = allowed_ops
         self.running = True
         self.score = 0
-        self.lives = 10000
+        self.lives = 3
         self.bins = []
         self.problems = []
         self.falling = None
@@ -178,7 +181,9 @@ class Game:
             self.speed_message_timer -= dt
 
     def draw(self, surf):
-        surf.fill(BG_COLOR)
+        bg_surface = create_cairo_background(WIDTH, HEIGHT)
+        surf.blit(bg_surface, (0, 0))
+
 
         lives_s = HUD_FONT.render(f"Lives: {self.lives}", True, TEXT_COLOR)
         surf.blit(lives_s, (WIDTH-60, 10))
@@ -201,22 +206,16 @@ class Game:
 
 #menu ui
 def draw_button(surface, rect, text, mouse_pos):
-    if rect.collidepoint(mouse_pos):
-        color = BUTTON_HOVER
-    else:
-        color = BUTTON_COLOR
-    pygame.draw.rect(surface, color, rect, border_radius=8)
-    label = BTN_FONT.render(text, True, (255,255,255))
-    surface.blit(label, label.get_rect(center=rect.center))
+    hover = rect.collidepoint(mouse_pos)
+    btn_img = render_menu_button(rect.width, rect.height, text, hover=hover)
+    surface.blit(btn_img, rect.topleft)
+
 
 def draw_small_button(surface, rect, text, mouse_pos):
-    if rect.collidepoint(mouse_pos):
-        color = BUTTON_HOVER
-    else:
-        color = BUTTON_COLOR
-    pygame.draw.rect(surface, color, rect, border_radius=6)
-    label = SMALL_FONT.render(text, True, (255,255,255))
-    surface.blit(label, label.get_rect(center=rect.center))
+    hover = rect.collidepoint(mouse_pos)
+    btn_img = render_menu_button(rect.width, rect.height, text, hover=hover)
+    surface.blit(btn_img, rect.topleft)
+
 
 def main_menu():
     ops_list = [
