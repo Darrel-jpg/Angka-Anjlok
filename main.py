@@ -73,6 +73,8 @@ class Game:
         self.running = True
         self.score = 0
         self.lives = 3
+        
+        self.background_img = create_cairo_background(WIDTH, HEIGHT)
         self.bins = []
         self.problems = []
         self.falling = None
@@ -181,8 +183,7 @@ class Game:
             self.speed_message_timer -= dt
 
     def draw(self, surf):
-        bg_surface = create_cairo_background(WIDTH, HEIGHT)
-        surf.blit(bg_surface, (0, 0))
+        surf.blit(self.background_img, (0, 0))
 
 
         lives_s = HUD_FONT.render(f"Lives: {self.lives}", True, TEXT_COLOR)
