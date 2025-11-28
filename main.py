@@ -24,7 +24,7 @@ TEXT_SHADOW = (20, 10, 5)
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
-pygame.display.set_caption("Tetris Angka: Fantasy Math")
+pygame.display.set_caption("Angka Anjlok")
 
 # Font diganti ke Serif agar lebih klasik/fantasy
 HUD_FONT = pygame.font.SysFont('Georgia', 20, bold=True)
@@ -137,7 +137,7 @@ class Game:
             if x <= cx <= x+w and y <= cy <= y+h:
                 expected = self.problems[idx].answer
                 if self.falling.value == expected:
-                    self.score += 10
+                    self.score += 1
                 else:
                     self.lives -= 1
                 self.falling = None
@@ -158,8 +158,8 @@ class Game:
             self.check_bin_collision()
         
         # Level up speed
-        if self.score > 0 and self.score % 50 == 0:
-            new_level = 1 + self.score // 50
+        if self.score > 0 and self.score % 5 == 0:
+            new_level = 1 + self.score // 5
             if new_level > self.speed_level:
                 self.speed_level = new_level
                 FALL_SPEED = BASE_FALL_SPEED + (self.speed_level - 1) * 30
@@ -280,8 +280,8 @@ def main_menu():
         screen.blit(scroll_bg, scroll_rect)
         
         # Judul
-        draw_text_centered(screen, "PILIH MODE", TITLE_FONT, (60, 40, 20), (WIDTH//2, scroll_rect.top + 60))
-        draw_text_centered(screen, "Tantangan Matematika", SUBTITLE_FONT, (100, 80, 60), (WIDTH//2, scroll_rect.top + 100))
+        draw_text_centered(screen, "PILIH MODE", TITLE_FONT, (60, 40, 20), (WIDTH//2, scroll_rect.top + 80))
+        # draw_text_centered(screen, "Tantangan Matematika", SUBTITLE_FONT, (100, 80, 60), (WIDTH//2, scroll_rect.top + 100))
 
         # 3. Loop Gambar Tombol (Tinggal tempel gambar yang sudah jadi)
         for btn in buttons:
@@ -323,7 +323,7 @@ def pause_popup(surface, mouse_pos):
     rect_scroll = scroll.get_rect(center=(cx, cy))
     surface.blit(scroll, rect_scroll)
 
-    draw_text_centered(surface, "PAUSE", TITLE_FONT, (60, 40, 20), (cx, rect_scroll.top + 60))
+    draw_text_centered(surface, "PAUSE", TITLE_FONT, (60, 40, 20), (cx, rect_scroll.top +680))
 
     btn_w, btn_h = 220, 50
     gap = 15
@@ -338,6 +338,27 @@ def pause_popup(surface, mouse_pos):
     draw_button(surface, menu_rect, "Keluar ke Menu", mouse_pos)
 
     return resume_rect, restart_rect, menu_rect
+
+def blur_surface(surface, scale_factor=0.1):
+    """
+    Membuat efek blur dengan cara mengecilkan gambar lalu membesarkannya lagi.
+    scale_factor 0.1 berarti gambar dikecilkan jadi 1/10 (blur kuat).
+    """
+    w, h = surface.get_size()
+    # 1. Kecilkan gambar (Detail hilang/hancur di sini)
+    small_w = max(1, int(w * scale_factor))
+    small_h = max(1, int(h * scale_factor))
+    small_surf = pygame.transform.smoothscale(surface, (small_w, small_h))
+    
+    # 2. Besarkan kembali (Pygame akan menghaluskan pixelnya -> jadi blur)
+    blurred_surf = pygame.transform.smoothscale(small_surf, (w, h))
+    
+    # 3. Tambahkan sedikit tint gelap agar teks putih di atasnya lebih terbaca
+    dark_tint = pygame.Surface((w, h), pygame.SRCALPHA)
+    dark_tint.fill((0, 0, 0, 100)) # Hitam transparan
+    blurred_surf.blit(dark_tint, (0, 0))
+    
+    return blurred_surf
 
 # ==============================================================================
 # MAIN LOOP
@@ -394,7 +415,8 @@ def main():
             "img_normal": img_normal,
             "img_hover": img_hover
         })
-
+        
+    cached_blur_bg = None
     # ==========================================
     # 2. GAME LOOP UTAMA
     # ==========================================
@@ -429,12 +451,15 @@ def main():
                             act = btn["action"]
                             if act == "resume":
                                 paused = False
+                                cached_blur_bg = None
                             elif act == "restart":
                                 game = Game(game.allowed_ops) # Reset game
                                 paused = False
+                                cached_blur_bg = None
                             elif act == "menu":
                                 state = "MENU" # Balik ke menu utama
                                 paused = False
+                                cached_blur_bg = None
 
                 # 3. Klik Game Over
                 elif game.is_game_over():
@@ -448,7 +473,10 @@ def main():
                 elif event.key == pygame.K_SPACE and game.falling and not paused:
                     game.falling.y = HEIGHT
                 elif event.key == pygame.K_ESCAPE:
-                    if not game.is_game_over(): paused = not paused
+                    if not game.is_game_over(): 
+                        paused = not paused
+                        if not paused:
+                            cached_blur_bg = None
 
             elif event.type == pygame.KEYUP:
                 if event.key in [pygame.K_LEFT, pygame.K_RIGHT]:
@@ -469,14 +497,23 @@ def main():
         # --- GAMBAR OVERLAY (PAUSE / GAME OVER) ---
         
         if paused:
-            # Tinggal tempel gambar yang sudah dibuat di awal (Sangat Ringan)
-            screen.blit(pause_overlay, (0, 0))
+            # LOGIKA BLUR BARU:
+            # Jika belum ada gambar blur tersimpan, buat sekarang
+            if cached_blur_bg is None:
+                # Ambil gambar layar game saat ini
+                screen_copy = screen.copy()
+                # Buat versi blurnya (skala 0.1 biar cepat)
+                cached_blur_bg = blur_surface(screen_copy, scale_factor=0.1)
+            
+            # Tampilkan gambar blur (menutup soal matematika)
+            screen.blit(cached_blur_bg, (0, 0))
+
+            # Tampilkan Kertas & Tombol (Sama seperti sebelumnya)
             screen.blit(pause_paper_img, pause_paper_rect)
             screen.blit(pause_title, pause_title_rect)
             
             for btn in pause_buttons:
                 is_hover = btn["rect"].collidepoint(mouse_pos)
-                # Pilih gambar berdasarkan hover
                 image_to_draw = btn["img_hover"] if is_hover else btn["img_normal"]
                 screen.blit(image_to_draw, btn["rect"])
 
