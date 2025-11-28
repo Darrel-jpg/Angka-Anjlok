@@ -1,484 +1,97 @@
-# ----------------------------
-# game_assets.py
-# ----------------------------
-import math
 import cairo
-import pygame
-import random
+import math
 
-# konversi cairo -> pygame
-def cairo_surface_to_pygame(surf: cairo.ImageSurface) -> pygame.Surface:
-    buf = surf.get_data()
-    py_surf = pygame.image.frombuffer(buf, (surf.get_width(), surf.get_height()), 'ARGB')
-    return py_surf.convert_alpha()
+def draw_coin_asset(number_text, size, filename):
+    """
+    Membuat gambar koin emas dengan angka di tengahnya.
+    
+    Args:
+        number_text (str): Angka yang ingin ditampilkan (misal: "5", "10").
+        size (int): Ukuran lebar dan tinggi gambar dalam piksel (misal: 128).
+        filename (str): Nama file output (misal: "coin_5.png").
+    """
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    ctx = cairo.Context(surface)
 
-# render tempat jawaban (bin)
-def render_bins_cairo(width, height, bin_rects, bin_labels):
-    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
-    ctx = cairo.Context(surf)
+    # --- Koordinat Pusat dan Radius ---
+    cx, cy = size / 2, size / 2
+    radius = size / 2 - 5 # Memberi sedikit margin di tepi
 
-    ctx.set_source_rgba(0,0,0,0)
-    ctx.paint()
+    # --- LAPISAN 1: Dasar Koin (Gradien Radial Emas) ---
+    # Ini membuat koin terlihat bulat dan metalik
+    pattern = cairo.RadialGradient(cx, cy, radius * 0.1, cx, cy, radius)
+    pattern.add_color_stop_rgb(0, 1.0, 0.95, 0.6) # Emas kuning terang di tengah
+    pattern.add_color_stop_rgb(0.7, 1.0, 0.8, 0.2) # Emas oranye
+    pattern.add_color_stop_rgb(1, 0.8, 0.6, 0.1)   # Emas gelap di pinggir
+    
+    ctx.set_source(pattern)
+    ctx.arc(cx, cy, radius, 0, 2 * math.pi)
+    ctx.fill()
 
-    pastel_bins = [
-        (0.75, 0.90, 1.0),
-        (1.0, 0.85, 0.95),
-        (0.85, 1.0, 0.85),
-        (1.0, 0.97, 0.80),
-    ]
+    # --- LAPISAN 2: Cincin Pinggir (Outer Rim) ---
+    # Memberi definisi pada tepi koin
+    ctx.set_line_width(size * 0.05)
+    ctx.set_source_rgb(0.9, 0.7, 0.1) # Warna emas solid untuk pinggiran
+    ctx.arc(cx, cy, radius - (size * 0.025), 0, 2 * math.pi)
+    ctx.stroke()
 
-    for rect, label in zip(bin_rects, bin_labels):
-        x, y, w, h = rect
-        r, g, b = random.choice(pastel_bins)
+    # --- LAPISAN 3: Cincin Dalam (Inner Border) ---
+    # Garis tipis yang memisahkan bagian luar dan dalam seperti di referensi
+    ctx.set_line_width(size * 0.02)
+    ctx.set_source_rgb(0.7, 0.5, 0.0) # Emas lebih gelap
+    inner_radius = radius * 0.75
+    ctx.arc(cx, cy, inner_radius, 0, 2 * math.pi)
+    ctx.stroke()
+    
+    # --- LAPISAN 4: Efek Kilau Diagonal (Shiny Sheen) ---
+    # Ini adalah kunci untuk membuatnya terlihat seperti gambar referensi.
+    # Kita menggunakan gradien linear transparan diagonal.
+    sheen = cairo.LinearGradient(0, 0, size, size)
+    # Putih transparan -> Kuning sangat transparan -> Putih transparan
+    sheen.add_color_stop_rgba(0.3, 1, 1, 1, 0.0) 
+    sheen.add_color_stop_rgba(0.5, 1, 1, 0.8, 0.4) # Kilau utama di tengah
+    sheen.add_color_stop_rgba(0.7, 1, 1, 1, 0.0)
 
-        # shadow
-        ctx.set_source_rgba(0,0,0,0.22)
-        ctx.rectangle(x + 3, y + 6, w, h)
-        ctx.fill()
+    ctx.set_source(sheen)
+    ctx.arc(cx, cy, radius, 0, 2 * math.pi)
+    ctx.fill()
 
-        # cloud gradient
-        radius = h * 0.35
-        grad = cairo.RadialGradient(
-            x + w/2 - 10, y + h/2 - 10, 5,
-            x + w/2,     y + h/2,     h*0.7
-        )
-        grad.add_color_stop_rgb(0, min(r+0.12,1), min(g+0.12,1), min(b+0.12,1))
-        grad.add_color_stop_rgb(1, r, g, b)
+    # --- LAPISAN 5: Angka di Tengah ---
+    # Menggambar angka agar terlihat menonjol
+    
+    # Pengaturan Font (Gunakan font yang tebal dan jelas)
+    font_size = size * 0.5
+    ctx.select_font_face("Arial", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+    ctx.set_font_size(font_size)
 
-        ctx.set_source(grad)
+    # Menghitung posisi agar teks benar-benar di tengah
+    (x_bearing, y_bearing, width, height, x_advance, y_advance) = ctx.text_extents(number_text)
+    text_x = cx - width / 2 - x_bearing
+    text_y = cy + height / 2 - y_bearing # Perhatikan y-bearing seringkali negatif
 
-        ctx.new_path()
-        ctx.arc(x + radius,     y + radius,     radius, math.pi, 3*math.pi/2)
-        ctx.arc(x + w-radius,   y + radius,     radius, 3*math.pi/2, 0)
-        ctx.arc(x + w-radius,   y + h-radius,   radius, 0, math.pi/2)
-        ctx.arc(x + radius,     y + h-radius,   radius, math.pi/2, math.pi)
-        ctx.close_path()
-        ctx.fill()
+    # 5a. Bayangan Teks (opsional, agar lebih kontras)
+    ctx.set_source_rgba(0.6, 0.4, 0.0, 0.5) # Warna bayangan gelap transparan
+    ctx.move_to(text_x + 2, text_y + 2)
+    ctx.show_text(number_text)
 
-        # highlight
-        ctx.set_source_rgba(1, 1, 1, 0.35)
-        ctx.arc(x + w*0.32, y + h*0.35, h*0.18, 0, 2*math.pi)
-        ctx.fill()
+    # 5b. Teks Utama
+    ctx.set_source_rgb(1.0, 1.0, 0.8) # Warna teks kuning pucat/krem
+    ctx.move_to(text_x, text_y)
+    ctx.show_text(number_text)
 
-        # label
-        ctx.set_source_rgb(0.15, 0.15, 0.15)
-        ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
-        ctx.set_font_size(h * 0.38)
+    # --- Simpan Gambar ---
+    surface.write_to_png(filename)
+    print(f"Berhasil membuat: {filename}")
 
-        te = ctx.text_extents(label)
-        text_x = x + (w - te.x_advance) / 2
-        text_y = y + (h + te.height) / 2 - h*0.05
+# ==========================================
+# Contoh Penggunaan untuk Game Anda
+# ==========================================
 
-        ctx.move_to(text_x, text_y)
-        ctx.show_text(label)
+# Tentukan ukuran aset sprite yang Anda inginkan (misal 100x100 pixel)
+SPRITE_SIZE = 100
 
-    return cairo_surface_to_pygame(surf)
-
-LAST_SHAPE = None
-LAST_COLOR = None
-
-
-def render_falling_block(value):
-    global LAST_SHAPE, LAST_COLOR
-
-    w, h = 80, 80
-    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
-    ctx = cairo.Context(surf)
-
-    ctx.set_source_rgba(0, 0, 0, 0)
-    ctx.paint()
-
-    cheerful_colors = [
-        (1.00, 0.30, 0.50),  # Pink Permen
-        (1.00, 0.50, 0.10),  # Oranye Jeruk
-        (1.00, 0.80, 0.10),  # Kuning Matahari
-        (0.30, 0.90, 0.30),  # Hijau Apel
-        (0.20, 0.75, 1.00),  # Biru Langit
-        (0.60, 0.40, 1.00),  # Ungu Anggur
-        (1.00, 0.45, 0.85),  # Merah Jambu
-        (0.25, 1.00, 0.75),  # Hijau Mint
-        (1.00, 0.20, 0.30),  # Merah Ceri
-        (0.95, 0.70, 0.20),  # Emas
-    ]
-
-    color_choices = [c for c in cheerful_colors if c != LAST_COLOR]
-    r, g, b = random.choice(color_choices)
-    LAST_COLOR = (r, g, b)
-
-    shapes = [
-        "smiley",           # Wajah tersenyum
-        "star",             # Bintang
-        "heart",            # Hati
-        "balloon",          # Balon
-        "ice_cream",        # Es krim
-        "lollipop",         # Permen lolipop
-        "apple",            # Apel
-        "flower",           # Bunga
-        "sun",              # Matahari
-        "cloud",            # Awan
-        "rainbow",          # Pelangi
-        "cupcake",          # Kue
-        "butterfly",        # Kupu-kupu
-        "fish",             # Ikan
-        "teddy_bear",       # Beruang
-        "cat",              # Kucing
-        "pizza",            # Pizza
-        "house",            # Rumah
-        "car",              # Mobil
-        "kite",             # Layang-layang
-    ]
-
-    shape_choices = [s for s in shapes if s != LAST_SHAPE]
-    shape = random.choice(shape_choices)
-    LAST_SHAPE = shape
-
-    for i in range(3):
-        alpha = 0.08 * (3 - i)
-        offset = 2 + i * 1.5
-        ctx.set_source_rgba(0, 0, 0, alpha)
-        ctx.arc(w/2 + offset, h/2 + offset, 35 + i, 0, 2*math.pi)
-        ctx.fill()
-        
-    grad = cairo.RadialGradient(w/2 - 10, h/2 - 10, 3, w/2, h/2, 38)
-    grad.add_color_stop_rgba(0, min(r+0.3,1), min(g+0.3,1), min(b+0.3,1), 1)
-    grad.add_color_stop_rgba(0.5, r, g, b, 1)
-    grad.add_color_stop_rgba(1, max(r-0.2,0), max(g-0.2,0), max(b-0.2,0), 1)
-
-    ctx.set_source(grad)
-
-    cx, cy = w/2, h/2
-
-    if shape == "smiley":
-        # Wajah bulat
-        ctx.arc(cx, cy, 28, 0, 2*math.pi)
-        ctx.fill()
-        # Mata kiri
-        ctx.set_source_rgb(0.1, 0.1, 0.1)
-        ctx.arc(cx - 10, cy - 8, 3, 0, 2*math.pi)
-        ctx.fill()
-        # Mata kanan
-        ctx.arc(cx + 10, cy - 8, 3, 0, 2*math.pi)
-        ctx.fill()
-        # Senyum
-        ctx.arc(cx, cy + 2, 15, 0, math.pi)
-        ctx.set_line_width(3)
-        ctx.stroke()
-
-    elif shape == "star":
-        # Bintang 5 ujung
-        ctx.new_path()
-        spikes, outer_r, inner_r = 5, 30, 14
-        angle = -math.pi/2
-        step = math.pi / spikes
-        for i in range(spikes * 2):
-            r_val = outer_r if i % 2 == 0 else inner_r
-            px = cx + math.cos(angle) * r_val
-            py = cy + math.sin(angle) * r_val
-            if i == 0:
-                ctx.move_to(px, py)
-            else:
-                ctx.line_to(px, py)
-            angle += step
-        ctx.close_path()
-        ctx.fill()
-
-    elif shape == "heart":
-        # Hati
-        ctx.new_path()
-        ctx.move_to(cx, cy + 12)
-        ctx.curve_to(cx + 30, cy - 8, cx + 12, cy - 30, cx, cy - 10)
-        ctx.curve_to(cx - 12, cy - 30, cx - 30, cy - 8, cx, cy + 12)
-        ctx.close_path()
-        ctx.fill()
-
-    elif shape == "balloon":
-        # Balon
-        ctx.new_path()
-        ctx.arc(cx, cy - 5, 25, 0, 2*math.pi)
-        ctx.fill()
-        # Tali balon
-        ctx.set_source_rgba(0.3, 0.3, 0.3, 0.7)
-        ctx.move_to(cx, cy + 20)
-        ctx.curve_to(cx - 5, cy + 30, cx + 5, cy + 35, cx, cy + 40)
-        ctx.set_line_width(2)
-        ctx.stroke()
-
-    elif shape == "ice_cream":
-        # Es krim
-        # Cone
-        ctx.set_source_rgb(0.85, 0.65, 0.35)
-        ctx.new_path()
-        ctx.move_to(cx - 15, cy + 5)
-        ctx.line_to(cx + 15, cy + 5)
-        ctx.line_to(cx, cy + 32)
-        ctx.close_path()
-        ctx.fill()
-        # Ice cream
-        ctx.set_source(grad)
-        ctx.arc(cx, cy - 5, 22, 0, 2*math.pi)
-        ctx.fill()
-        ctx.arc(cx - 12, cy - 15, 15, 0, 2*math.pi)
-        ctx.fill()
-        ctx.arc(cx + 12, cy - 15, 15, 0, 2*math.pi)
-        ctx.fill()
-
-    elif shape == "lollipop":
-        # Permen lolipop
-        ctx.arc(cx, cy - 8, 22, 0, 2*math.pi)
-        ctx.fill()
-        # Batang
-        ctx.set_source_rgba(0.9, 0.9, 0.9, 0.9)
-        ctx.rectangle(cx - 2, cy + 14, 4, 20)
-        ctx.fill()
-        # Swirl
-        ctx.set_source_rgba(1, 1, 1, 0.4)
-        ctx.arc(cx, cy - 8, 16, 0, math.pi)
-        ctx.set_line_width(3)
-        ctx.stroke()
-
-    elif shape == "apple":
-        # Apel
-        ctx.arc(cx, cy + 2, 26, 0, 2*math.pi)
-        ctx.fill()
-        # Daun
-        ctx.set_source_rgb(0.2, 0.7, 0.2)
-        ctx.new_path()
-        ctx.arc(cx + 8, cy - 22, 8, 0, 2*math.pi)
-        ctx.fill()
-        # Batang
-        ctx.set_source_rgb(0.4, 0.3, 0.2)
-        ctx.rectangle(cx - 1, cy - 24, 2, 8)
-        ctx.fill()
-
-    elif shape == "flower":
-        # Bunga 6 kelopak
-        for i in range(6):
-            angle = i * (math.pi/3)
-            px = cx + math.cos(angle) * 18
-            py = cy + math.sin(angle) * 18
-            ctx.arc(px, py, 12, 0, 2*math.pi)
-            ctx.fill()
-        # Tengah bunga
-        ctx.set_source_rgb(1, 0.9, 0.3)
-        ctx.arc(cx, cy, 10, 0, 2*math.pi)
-        ctx.fill()
-
-    elif shape == "sun":
-        # Matahari
-        ctx.arc(cx, cy, 20, 0, 2*math.pi)
-        ctx.fill()
-        # Sinar
-        for i in range(8):
-            angle = i * (math.pi/4)
-            x1 = cx + math.cos(angle) * 22
-            y1 = cy + math.sin(angle) * 22
-            x2 = cx + math.cos(angle) * 32
-            y2 = cy + math.sin(angle) * 32
-            ctx.move_to(x1, y1)
-            ctx.line_to(x2, y2)
-            ctx.set_line_width(3)
-            ctx.stroke()
-
-    elif shape == "cloud":
-        # Awan
-        ctx.arc(cx - 15, cy, 18, 0, 2*math.pi)
-        ctx.fill()
-        ctx.arc(cx + 15, cy, 20, 0, 2*math.pi)
-        ctx.fill()
-        ctx.arc(cx, cy - 10, 18, 0, 2*math.pi)
-        ctx.fill()
-
-    elif shape == "rainbow":
-        # Pelangi
-        colors_rainbow = [
-            (1, 0.2, 0.2), (1, 0.6, 0.2), (1, 0.9, 0.2),
-            (0.3, 0.9, 0.3), (0.2, 0.5, 1), (0.5, 0.3, 1)
-        ]
-        for i, col in enumerate(colors_rainbow):
-            ctx.set_source_rgb(*col)
-            ctx.arc(cx, cy + 10, 28 - i*4, math.pi, 2*math.pi)
-            ctx.set_line_width(3)
-            ctx.stroke()
-
-    elif shape == "cupcake":
-        # Kue cup
-        # Cup
-        ctx.set_source_rgb(0.9, 0.7, 0.5)
-        ctx.new_path()
-        ctx.move_to(cx - 18, cy + 10)
-        ctx.line_to(cx - 14, cy + 28)
-        ctx.line_to(cx + 14, cy + 28)
-        ctx.line_to(cx + 18, cy + 10)
-        ctx.close_path()
-        ctx.fill()
-        # Frosting
-        ctx.set_source(grad)
-        ctx.arc(cx - 10, cy + 2, 12, 0, 2*math.pi)
-        ctx.fill()
-        ctx.arc(cx + 10, cy + 2, 12, 0, 2*math.pi)
-        ctx.fill()
-        ctx.arc(cx, cy - 10, 14, 0, 2*math.pi)
-        ctx.fill()
-
-    elif shape == "butterfly":
-        # Kupu-kupu
-        # Sayap kiri
-        ctx.arc(cx - 16, cy - 8, 16, 0, 2*math.pi)
-        ctx.fill()
-        ctx.arc(cx - 16, cy + 10, 14, 0, 2*math.pi)
-        ctx.fill()
-        # Sayap kanan
-        ctx.arc(cx + 16, cy - 8, 16, 0, 2*math.pi)
-        ctx.fill()
-        ctx.arc(cx + 16, cy + 10, 14, 0, 2*math.pi)
-        ctx.fill()
-        # Badan
-        ctx.set_source_rgb(0.2, 0.2, 0.2)
-        ctx.rectangle(cx - 3, cy - 22, 6, 44)
-        ctx.fill()
-
-    elif shape == "fish":
-        # Ikan
-        # Badan
-        ctx.arc(cx + 3, cy, 22, 0, 2*math.pi)
-        ctx.fill()
-        # Ekor
-        ctx.new_path()
-        ctx.move_to(cx - 18, cy)
-        ctx.line_to(cx - 30, cy - 15)
-        ctx.line_to(cx - 30, cy + 15)
-        ctx.close_path()
-        ctx.fill()
-        # Mata
-        ctx.set_source_rgb(1, 1, 1)
-        ctx.arc(cx + 12, cy - 5, 5, 0, 2*math.pi)
-        ctx.fill()
-        ctx.set_source_rgb(0.1, 0.1, 0.1)
-        ctx.arc(cx + 13, cy - 5, 2, 0, 2*math.pi)
-        ctx.fill()
-
-    elif shape == "teddy_bear":
-        # Beruang
-        # Kepala
-        ctx.arc(cx, cy, 20, 0, 2*math.pi)
-        ctx.fill()
-        # Telinga kiri
-        ctx.arc(cx - 15, cy - 18, 10, 0, 2*math.pi)
-        ctx.fill()
-        # Telinga kanan
-        ctx.arc(cx + 15, cy - 18, 10, 0, 2*math.pi)
-        ctx.fill()
-        # Moncong
-        ctx.set_source_rgba(1, 0.9, 0.8, 0.9)
-        ctx.arc(cx, cy + 8, 12, 0, 2*math.pi)
-        ctx.fill()
-        # Mata
-        ctx.set_source_rgb(0.1, 0.1, 0.1)
-        ctx.arc(cx - 8, cy - 5, 2, 0, 2*math.pi)
-        ctx.fill()
-        ctx.arc(cx + 8, cy - 5, 2, 0, 2*math.pi)
-        ctx.fill()
-
-    elif shape == "cat":
-        # Kucing
-        # Kepala
-        ctx.arc(cx, cy, 22, 0, 2*math.pi)
-        ctx.fill()
-        # Telinga kiri
-        ctx.new_path()
-        ctx.move_to(cx - 20, cy - 18)
-        ctx.line_to(cx - 10, cy - 25)
-        ctx.line_to(cx - 5, cy - 18)
-        ctx.close_path()
-        ctx.fill()
-        # Telinga kanan
-        ctx.move_to(cx + 20, cy - 18)
-        ctx.line_to(cx + 10, cy - 25)
-        ctx.line_to(cx + 5, cy - 18)
-        ctx.close_path()
-        ctx.fill()
-        # Mata
-        ctx.set_source_rgb(0.1, 0.1, 0.1)
-        ctx.arc(cx - 8, cy - 3, 2, 0, 2*math.pi)
-        ctx.fill()
-        ctx.arc(cx + 8, cy - 3, 2, 0, 2*math.pi)
-        ctx.fill()
-
-    elif shape == "pizza":
-        # Pizza
-        ctx.new_path()
-        ctx.move_to(cx, cy - 25)
-        ctx.line_to(cx + 28, cy + 20)
-        ctx.line_to(cx - 28, cy + 20)
-        ctx.close_path()
-        ctx.fill()
-        # Topping
-        ctx.set_source_rgb(0.9, 0.3, 0.2)
-        for pos in [(cx-10, cy-5), (cx+8, cy), (cx-5, cy+10)]:
-            ctx.arc(pos[0], pos[1], 4, 0, 2*math.pi)
-            ctx.fill()
-
-    elif shape == "house":
-        # Rumah
-        # Dinding
-        ctx.rectangle(cx - 20, cy - 5, 40, 30)
-        ctx.fill()
-        # Atap
-        ctx.new_path()
-        ctx.move_to(cx - 25, cy - 5)
-        ctx.line_to(cx, cy - 28)
-        ctx.line_to(cx + 25, cy - 5)
-        ctx.close_path()
-        ctx.fill()
-        # Pintu
-        ctx.set_source_rgba(0.4, 0.3, 0.2, 0.8)
-        ctx.rectangle(cx - 8, cy + 8, 16, 17)
-        ctx.fill()
-
-    elif shape == "car":
-        # Mobil
-        # Badan
-        ctx.rectangle(cx - 25, cy + 5, 50, 15)
-        ctx.fill()
-        # Atap
-        ctx.rectangle(cx - 15, cy - 8, 30, 13)
-        ctx.fill()
-        # Roda kiri
-        ctx.set_source_rgb(0.2, 0.2, 0.2)
-        ctx.arc(cx - 15, cy + 22, 6, 0, 2*math.pi)
-        ctx.fill()
-        # Roda kanan
-        ctx.arc(cx + 15, cy + 22, 6, 0, 2*math.pi)
-        ctx.fill()
-
-    elif shape == "kite":
-        # Layang-layang
-        ctx.new_path()
-        ctx.move_to(cx, cy - 28)
-        ctx.line_to(cx + 22, cy)
-        ctx.line_to(cx, cy + 28)
-        ctx.line_to(cx - 22, cy)
-        ctx.close_path()
-        ctx.fill()
-        # Tali
-        ctx.set_source_rgba(0.3, 0.3, 0.3, 0.6)
-        ctx.move_to(cx, cy + 28)
-        ctx.line_to(cx + 5, cy + 38)
-        ctx.set_line_width(2)
-        ctx.stroke()
-
-    # Bayangan
-    ctx.set_source_rgba(0, 0, 0, 0.4)
-    ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
-    ctx.set_font_size(34)
-    te = ctx.text_extents(str(value))
-    ctx.move_to((w - te.x_advance)/2 + 1, (h + te.height)/2)
-    ctx.show_text(str(value))
-
-    # Angka utama
-    ctx.set_source_rgb(1, 1, 1)
-    ctx.set_font_size(34)
-    ctx.move_to((w - te.x_advance)/2, (h + te.height)/2 - 1)
-    ctx.show_text(str(value))
-
-    return cairo_surface_to_pygame(surf)
+# Hasilkan beberapa angka untuk contoh
+draw_coin_asset("5", SPRITE_SIZE, "coin_5.png")
+draw_coin_asset("10", SPRITE_SIZE, "coin_10.png")
+draw_coin_asset("42", SPRITE_SIZE, "coin_42.png")
+draw_coin_asset("?", SPRITE_SIZE, "coin_tanya.png") # Bisa juga simbol lain
