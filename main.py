@@ -5,7 +5,7 @@ import math
 from assets import render_bins_cairo, render_falling_block
 
 #config
-WIDTH, HEIGHT = 480, 640
+WIDTH, HEIGHT = int(480*1.2), int(640*1.2)
 FPS = 60
 BIN_COUNT = 4
 BASE_FALL_SPEED = 90
@@ -193,7 +193,7 @@ class Game:
 
         if self.speed_message_timer > 0:
             msg_font = pygame.font.SysFont('Arial', 22, bold=True)
-            msg = msg_font.render(f"Speed Up! ({FALL_SPEED:.0f}px/s)", True, (255, 220, 80))
+            msg = msg_font.render(f"Speed Up!", True, (255, 220, 80))
             surf.blit(msg, msg.get_rect(center=(WIDTH//2, 60)))
 
     def is_game_over(self):
