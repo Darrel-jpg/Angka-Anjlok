@@ -1,23 +1,21 @@
 <div align="center">
-    <h1>🪨 ANGKA ANJLOK 🪨</h1>
+    <h1>ANGKA ANJLOK</h1>
     <p>
         <strong>Game Edukasi Perhitungan Matematika</strong>
     </p>
-
-    <img src="https://via.placeholder.com/600x300?text=Screenshot+Gameplay+Angka+Anjlok" alt="Gameplay Preview" width="600">
 </div>
 
 <hr>
 
-<h2 id="-tentang">📜 Tentang Game</h2>
+<h2 id="-tentang">Tentang Game</h2>
 <p>
     <strong>Angka Anjlok</strong> adalah permainan mengasah otak di mana pemain harus mencocokkan angka yang jatuh dengan soal matematika yang benar di kantong bawah. Game ini unik karena <strong>tidak menggunakan aset gambar eksternal (JPG/PNG)</strong>. Semua elemen visual (tekstur batu, tas kulit, koin emas, efek blur) dibuat secara <em>real-time</em> menggunakan kode Python dengan library <strong>PyCairo</strong>.
 </p>
 
-<h2 id="-fitur">✨ Fitur Utama</h2>
+<h2 id="-fitur">Fitur Utama</h2>
 <ul>
     <li>
-        <strong>🎨 Grafik Prosedural (Code-Generated Art):</strong>
+        <strong>Grafik Prosedural (Code-Generated Art):</strong>
         <ul>
             <li>Tekstur batu granit/slate dengan detail retakan dan lumut.</li>
             <li>Kantong kulit (Leather Pouch) dengan efek jahitan dan dimensi.</li>
@@ -25,7 +23,7 @@
         </ul>
     </li>
     <li>
-        <strong>⚙️ Mode Permainan Lengkap:</strong>
+        <strong>Mode Permainan Lengkap:</strong>
         <ul>
             <li>Penjumlahan (+), Pengurangan (-), Perkalian (x), Pembagian (:).</li>
             <li>Mode Campuran (Semua Operasi).</li>
@@ -40,7 +38,7 @@
         </ul>
     </li>
     <li>
-        <strong>🖥️ UI/UX Modern:</strong>
+        <strong>UI/UX Modern:</strong>
         <ul>
             <li>Menu Pause dengan background <em>blur</em> dan panel batu.</li>
             <li>HUD Skor dan Nyawa (Heart Icon) berbasis vektor.</li>
@@ -49,7 +47,7 @@
     </li>
 </ul>
 
-<h2 id="-teknologi">🛠️ Teknologi</h2>
+<h2 id="-teknologi">Teknologi</h2>
 <p>Game ini dibangun menggunakan:</p>
 <ul>
     <li><strong>Python 3.x</strong> - Bahasa Pemrograman Utama.</li>
@@ -57,7 +55,7 @@
     <li><strong>PyCairo</strong> - Rendering grafik vektor 2D berkualitas tinggi.</li>
 </ul>
 
-<h2 id="-instalasi">📥 Instalasi & Menjalankan</h2>
+<h2 id="-instalasi">Instalasi & Menjalankan</h2>
 <p>Pastikan Python sudah terinstall di komputer Anda. Ikuti langkah berikut:</p>
 
 <h3>1. Clone Repository</h3>
@@ -72,7 +70,7 @@ cd angka-anjlok</code></pre>
 <h3>3. Jalankan Game</h3>
 <pre><code>python main.py</code></pre>
 
-<h2 id="-cara-bermain">🎮 Cara Bermain</h2>
+<h2 id="-cara-bermain">Cara Bermain</h2>
 <table border="1" cellpadding="10">
     <thead>
         <tr>
