@@ -3,9 +3,6 @@ import cairo
 import pygame
 import random
 
-# ==============================================================================
-# UTILITY
-# ==============================================================================
 def cairo_surface_to_pygame(surf: cairo.ImageSurface) -> pygame.Surface:
     buf = surf.get_data()
     return pygame.image.frombuffer(
@@ -15,12 +12,10 @@ def cairo_surface_to_pygame(surf: cairo.ImageSurface) -> pygame.Surface:
     ).convert_alpha()
 
 def hex_to_rgb(hex_color):
-    """Mengubah warna hex string (#RRGGBB) menjadi tuple (r, g, b) cairo 0.0-1.0."""
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i+2], 16)/255.0 for i in (0, 2, 4))
 
 def draw_chamfered_rect(ctx, x, y, width, height, chamfer_size):
-    """Membuat path persegi panjang dengan sudut terpotong."""
     ctx.new_path()
     ctx.move_to(x + chamfer_size, y)
     ctx.line_to(x + width - chamfer_size, y)
@@ -33,18 +28,13 @@ def draw_chamfered_rect(ctx, x, y, width, height, chamfer_size):
     ctx.close_path()
 
 def draw_stone_texture(ctx, w, h, dark_mode=False):
-    """
-    Menggambar tekstur batu (Granit/Slate).
-    """
-    # 1. Warna Dasar Batu
     if dark_mode:
-        ctx.set_source_rgb(0.15, 0.15, 0.18) # Batu gelap
+        ctx.set_source_rgb(0.15, 0.15, 0.18)
     else:
-        ctx.set_source_rgb(0.28, 0.28, 0.32) # Batu standar
+        ctx.set_source_rgb(0.28, 0.28, 0.32)
     ctx.rectangle(0, 0, w, h)
     ctx.fill()
     
-    # 2. Noise (Butiran batu)
     for _ in range(int(w * h * 0.005)):
         nx = random.randint(0, int(w))
         ny = random.randint(0, int(h))
@@ -56,7 +46,6 @@ def draw_stone_texture(ctx, w, h, dark_mode=False):
         ctx.rectangle(nx, ny, size, size)
         ctx.fill()
 
-    # 3. Retakan (Cracks)
     ctx.set_line_width(1)
     ctx.set_source_rgba(0.05, 0.05, 0.08, 0.4)
     for _ in range(int((w+h)/100) + 1):
@@ -69,7 +58,6 @@ def draw_stone_texture(ctx, w, h, dark_mode=False):
             ctx.line_to(cx, cy)
         ctx.stroke()
         
-    # 4. Sedikit Lumut (Moss)
     for _ in range(3):
         mx = random.randint(0, int(w))
         my = random.randint(0, int(h))
@@ -77,11 +65,7 @@ def draw_stone_texture(ctx, w, h, dark_mode=False):
         ctx.arc(mx, my, random.randint(10, 30), 0, 2*math.pi)
         ctx.fill()
 
-# ==============================================================================
-# UI: HUD PANEL & ICONS
-# ==============================================================================
 def render_hud_panel(width, height):
-    """Panel batu pecah/kasar untuk background skor"""
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
     ctx = cairo.Context(surf)
     
@@ -105,7 +89,6 @@ def render_hud_panel(width, height):
     return cairo_surface_to_pygame(surf)
 
 def render_heart_icon(size):
-    """Icon hati (Kristal Merah/Ruby)"""
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
     ctx = cairo.Context(surf)
     
@@ -131,46 +114,36 @@ def render_heart_icon(size):
     return cairo_surface_to_pygame(surf)
 
 def render_pause_button_asset(size, hover=False):
-    """Tombol Pause kecil berbentuk batu bulat kuno"""
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
     ctx = cairo.Context(surf)
-    
     cx, cy = size/2, size/2
     r = size/2 - 2
-    
-    # Lingkaran Batu
     ctx.arc(cx, cy, r, 0, 2*math.pi)
     ctx.save()
     ctx.clip()
-    draw_stone_texture(ctx, size, size, dark_mode=not hover)
-    
-    # Efek bulat
+    draw_stone_texture(ctx, size, size, dark_mode=not hover)    
     grad = cairo.RadialGradient(cx - r*0.3, cy - r*0.3, r*0.1, cx, cy, r)
     grad.add_color_stop_rgba(0, 1, 1, 1, 0.1)
     grad.add_color_stop_rgba(1, 0, 0, 0, 0.6)
     ctx.set_source(grad)
     ctx.paint()
-    ctx.restore()
-    
-    # Cincin Besi
+    ctx.restore()    
     ctx.new_path()
     ctx.arc(cx, cy, r, 0, 2*math.pi)
     ctx.set_line_width(3)
+
     if hover:
         ctx.set_source_rgb(0.7, 0.7, 0.8)
     else:
         ctx.set_source_rgb(0.4, 0.35, 0.3)
     ctx.stroke()
     
-    # Simbol Pause
     bar_w = size * 0.12
     bar_h = size * 0.35
-    
     ctx.set_source_rgb(0.1, 0.1, 0.1)
     ctx.rectangle(cx - bar_w*1.8, cy - bar_h/2, bar_w, bar_h)
     ctx.rectangle(cx + bar_w*0.8, cy - bar_h/2, bar_w, bar_h)
     ctx.fill()
-    
     ctx.set_source_rgba(1, 1, 1, 0.3)
     ctx.set_line_width(1)
     ctx.rectangle(cx - bar_w*1.8, cy - bar_h/2, bar_w, bar_h)
@@ -180,59 +153,38 @@ def render_pause_button_asset(size, hover=False):
     
     return cairo_surface_to_pygame(surf)
 
-# ==============================================================================
-# UI: MENU ASSETS (STONE SLAB & BUTTONS)
-# ==============================================================================
 def render_pause_slab(width, height, title_text="PAUSED"):
-    """
-    Menggambar papan batu background untuk menu (Container).
-    """
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height))
-    ctx = cairo.Context(surf)
-    
+    ctx = cairo.Context(surf)    
     m = 0 
-    
-    # Warna Batu (Beige Stone)
     color_light = hex_to_rgb("#beaa9d") 
     color_shadow = hex_to_rgb("#847666") 
-
-    # 1. Gambar Bagian Bayangan (Depth)
     offset_depth = 15
     draw_chamfered_rect(ctx, m, m + offset_depth, width, height - offset_depth, 30)
     ctx.set_source_rgb(*color_shadow)
     ctx.fill()
-
-    # 2. Gambar Permukaan Utama
     draw_chamfered_rect(ctx, m, m, width, height - offset_depth, 30)
     ctx.set_source_rgb(*color_light)
-    ctx.fill()
-    
-    # 3. Detail Retakan
+    ctx.fill()    
     ctx.set_source_rgb(*color_shadow)
-    ctx.set_line_width(3)
-    
+    ctx.set_line_width(3)    
     ctx.move_to(m + 20, m + 40)
     ctx.line_to(m + 50, m + 60)
     ctx.line_to(m + 40, m + 90)
     ctx.stroke()
-    
     ctx.move_to(width - 20, height - offset_depth - 40)
     ctx.line_to(width - 50, height - offset_depth - 60)
     ctx.stroke()
 
-    # 4. Judul Menu
     if title_text:
         ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
-        ctx.set_font_size(40)
-        
+        ctx.set_font_size(40)        
         (xb, yb, tw, th, xa, ya) = ctx.text_extents(title_text)
         text_x = (width - tw) / 2
         text_y = 70 
-        
         ctx.move_to(text_x + 2, text_y + 2)
         ctx.set_source_rgba(0.4, 0.35, 0.3, 0.8)
         ctx.show_text(title_text)
-        
         ctx.move_to(text_x, text_y)
         ctx.set_source_rgb(1, 1, 1)
         ctx.show_text(title_text)
@@ -240,12 +192,8 @@ def render_pause_slab(width, height, title_text="PAUSED"):
     return cairo_surface_to_pygame(surf)
 
 def render_colored_button(width, height, text, color_hex, hover=False):
-    """
-    Menggambar tombol 3D berwarna.
-    """
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height + 10))
     ctx = cairo.Context(surf)
-    
     r, g, b = hex_to_rgb(color_hex)
     
     if hover:
@@ -255,18 +203,13 @@ def render_colored_button(width, height, text, color_hex, hover=False):
 
     shadow_factor = 0.7 
     shadow_r, shadow_g, shadow_b = r * shadow_factor, g * shadow_factor, b * shadow_factor
-    
     chamfer = 15
     depth = 8
-    
     x, y = 0, 0
-    
-    # 1. Gambar Ketebalan
     draw_chamfered_rect(ctx, x, y + depth, width, height, chamfer)
     ctx.set_source_rgb(shadow_r, shadow_g, shadow_b)
     ctx.fill()
 
-    # 2. Gambar Wajah
     if hover:
         y += 2
         depth -= 2
@@ -274,8 +217,6 @@ def render_colored_button(width, height, text, color_hex, hover=False):
     draw_chamfered_rect(ctx, x, y, width, height, chamfer)
     ctx.set_source_rgb(r, g, b)
     ctx.fill()
-
-    # 3. Highlight Glossy
     ctx.save()
     draw_chamfered_rect(ctx, x + 5, y + 5, width - 10, height/2 - 5, chamfer)
     ctx.clip()
@@ -287,7 +228,6 @@ def render_colored_button(width, height, text, color_hex, hover=False):
     ctx.fill()
     ctx.restore()
 
-    # 4. Dekorasi Lubang Baut
     def draw_crater(cx, cy):
         ctx.arc(cx, cy, 3, 0, 2 * math.pi)
         ctx.set_source_rgb(shadow_r, shadow_g, shadow_b)
@@ -295,30 +235,21 @@ def render_colored_button(width, height, text, color_hex, hover=False):
     
     draw_crater(x + 15, y + height - 15)
     draw_crater(x + width - 15, y + 15)
-
-    # 5. Teks
     ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
     ctx.set_font_size(24) 
     (xb, yb, tw, th, xa, ya) = ctx.text_extents(text)
-    
     text_x = x + (width - tw) / 2 - xb
     text_y = y + (height / 2) + (th / 2) 
-    
     ctx.move_to(text_x + 1, text_y + 2)
     ctx.set_source_rgb(shadow_r, shadow_g, shadow_b)
     ctx.show_text(text)
-    
     ctx.move_to(text_x, text_y)
     ctx.set_source_rgb(1, 1, 1)
     ctx.show_text(text)
 
     return cairo_surface_to_pygame(surf)
 
-# ==============================================================================
-# ENVIRONMENT & GAME OBJECTS
-# ==============================================================================
 def create_cairo_background(width, height):
-    """Background Tanah dengan efek cahaya (God Rays)"""
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height))
     ctx = cairo.Context(surface)
 
@@ -328,11 +259,9 @@ def create_cairo_background(width, height):
     MOSS_LIGHT = (0.35, 0.50, 0.25)
     LIGHT_RAY = (1.0, 0.95, 0.8, 0.08)
 
-    # Base
     ctx.set_source_rgb(*GROUND_DARK)
     ctx.paint()
 
-    # Texture
     for _ in range(150):
         x = random.randint(0, int(width))
         y = random.randint(0, int(height))
@@ -341,7 +270,6 @@ def create_cairo_background(width, height):
         ctx.arc(x, y, rad, 0, 2*math.pi)
         ctx.fill()
 
-    # Moss
     def draw_moss_clump(mx, my, size_base):
         ctx.save()
         ctx.translate(mx, my)
@@ -362,7 +290,6 @@ def create_cairo_background(width, height):
     for _ in range(30):
         draw_moss_clump(random.randint(0, int(width)), random.randint(0, int(height)), 40)
 
-    # God Rays
     ctx.save()
     ctx.rotate(math.radians(-15))
     for _ in range(5):
@@ -378,14 +305,12 @@ def create_cairo_background(width, height):
         ctx.fill()
     ctx.restore()
 
-    # Vignette
     pat_vig = cairo.RadialGradient(width/2, height/2, width*0.3, width/2, height/2, width*0.8)
     pat_vig.add_color_stop_rgba(0, 0, 0, 0, 0.0)
     pat_vig.add_color_stop_rgba(1, 0.05, 0.02, 0.02, 0.85)
     ctx.set_source(pat_vig)
     ctx.paint()
 
-    # Particles
     for _ in range(40):
         px = random.randint(0, int(width))
         py = random.randint(0, int(height))
@@ -397,7 +322,6 @@ def create_cairo_background(width, height):
     return cairo_surface_to_pygame(surface)
 
 def render_bins_cairo(width, height, bin_rects, bin_labels):
-    """Menggambar Bin sebagai Kantong Kulit"""
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
     ctx = cairo.Context(surface)
 
@@ -413,7 +337,6 @@ def render_bins_cairo(width, height, bin_rects, bin_labels):
         cx = x + w / 2
         base_y = y + h - 10
         
-        # Shadow
         ctx.save()
         ctx.scale(1, 0.3)
         ctx.arc(cx, (base_y + 5) / 0.3, w * 0.45, 0, 2*math.pi)
@@ -421,7 +344,6 @@ def render_bins_cairo(width, height, bin_rects, bin_labels):
         ctx.fill()
         ctx.restore()
 
-        # Body
         neck_y = y + h * 0.25
         neck_w = w * 0.55
         
@@ -442,7 +364,6 @@ def render_bins_cairo(width, height, bin_rects, bin_labels):
         ctx.set_line_width(2)
         ctx.stroke()
 
-        # Stitching
         stitch_path_x = cx + w * 0.25
         num_stitches = 8
         for i in range(num_stitches):
@@ -457,13 +378,11 @@ def render_bins_cairo(width, height, bin_rects, bin_labels):
             ctx.set_line_width(1.5)
             ctx.stroke()
 
-        # Ruffles
         ctx.new_path()
         ruffle_h = h * 0.15
         top_y = y + 5
         ctx.move_to(cx - neck_w/2 + 5, neck_y)
         
-        # Manual curves to avoid quadratic method
         x0, y0 = ctx.get_current_point()
         qx1, qy1 = cx - neck_w/2 - 10, top_y + ruffle_h/2
         qx2, qy2 = cx - neck_w/2, top_y
@@ -484,7 +403,6 @@ def render_bins_cairo(width, height, bin_rects, bin_labels):
         ctx.set_source(grad_top)
         ctx.fill()
 
-        # Rope
         rope_thick = 8
         rope_segments = 12
         rope_w = neck_w - 5
@@ -508,16 +426,15 @@ def render_bins_cairo(width, height, bin_rects, bin_labels):
             ctx.stroke()
             ctx.restore()
 
-        # Label
         ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
         ctx.set_font_size(min(w, h) * 0.25)
         (xb, yb, wb, hb, xb_adv, yb_adv) = ctx.text_extents(label)
         text_x = cx - wb / 2 - xb
-        text_y = base_y - h*0.35
+        text_y = base_y - h*0.20
         ctx.set_source_rgba(0.2, 0.1, 0.05, 0.6)
         ctx.move_to(text_x + 1, text_y + 2)
         ctx.show_text(label)
-        ctx.set_source_rgba(0.9, 0.85, 0.7, 0.9)
+        ctx.set_source_rgba(0, 0, 0, 1)
         ctx.move_to(text_x, text_y)
         ctx.show_text(label)
 
@@ -528,7 +445,6 @@ def render_falling_block(value):
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
     ctx = cairo.Context(surf)
 
-    # Layer 1: Dasar Emas
     cx, cy = w / 2, h / 2
     radius = (w / 2) - 5 
     pattern = cairo.RadialGradient(cx, cy, radius * 0.1, cx, cy, radius)
@@ -539,7 +455,6 @@ def render_falling_block(value):
     ctx.arc(cx, cy, radius, 0, 2 * math.pi)
     ctx.fill()
 
-    # Layer 2: Rims
     ctx.set_line_width(4)
     ctx.set_source_rgb(0.9, 0.7, 0.1)
     ctx.arc(cx, cy, radius - 2, 0, 2 * math.pi)
@@ -550,7 +465,6 @@ def render_falling_block(value):
     ctx.arc(cx, cy, inner_radius, 0, 2 * math.pi)
     ctx.stroke()
     
-    # Layer 3: Sheen
     sheen = cairo.LinearGradient(0, 0, w, h)
     sheen.add_color_stop_rgba(0.3, 1, 1, 1, 0.0) 
     sheen.add_color_stop_rgba(0.5, 1, 1, 1, 0.4)
@@ -559,7 +473,6 @@ def render_falling_block(value):
     ctx.arc(cx, cy, radius, 0, 2 * math.pi)
     ctx.fill()
 
-    # Layer 4: Text
     ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
     ctx.set_font_size(32)
     te = ctx.text_extents(str(value))
