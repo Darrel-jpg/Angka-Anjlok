@@ -50,7 +50,7 @@
 <h2 id="-teknologi">Teknologi</h2>
 <p>Game ini dibangun menggunakan:</p>
 <ul>
-    <li><strong>Python 3.x</strong> - Bahasa Pemrograman Utama.</li>
+    <li><strong>Python</strong> - Bahasa Pemrograman Utama.</li>
     <li><strong>Pygame</strong> - Engine game loop dan input handling.</li>
     <li><strong>PyCairo</strong> - Rendering grafik vektor 2D berkualitas tinggi.</li>
 </ul>
