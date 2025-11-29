@@ -1,97 +1,195 @@
 import cairo
 import math
 
-def draw_coin_asset(number_text, size, filename):
+def hex_to_rgb(hex_color):
+    """Mengubah warna hex string (#RRGGBB) menjadi tuple (r, g, b) cairo."""
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16)/255.0 for i in (0, 2, 4))
+
+def draw_chamfered_rect(ctx, x, y, width, height, chamfer_size):
     """
-    Membuat gambar koin emas dengan angka di tengahnya.
+    Membuat path berbentuk persegi panjang dengan sudut terpotong (chamfered).
+    Bentuk ini khas untuk gaya UI game 'batu' atau kartun.
+    """
+    ctx.new_path()
+    # Kiri atas
+    ctx.move_to(x + chamfer_size, y)
+    # Kanan atas
+    ctx.line_to(x + width - chamfer_size, y)
+    ctx.line_to(x + width, y + chamfer_size)
+    # Kanan bawah
+    ctx.line_to(x + width, y + height - chamfer_size)
+    ctx.line_to(x + width - chamfer_size, y + height)
+    # Kiri bawah
+    ctx.line_to(x + chamfer_size, y + height)
+    ctx.line_to(x, y + height - chamfer_size)
+    # Kembali ke kiri atas
+    ctx.line_to(x, y + chamfer_size)
+    ctx.close_path()
+
+def draw_stone_slab(ctx, x, y, width, height):
+    """
+    Fungsi untuk menggambar background batu besar.
+    """
+    # Warna Batu
+    color_light = hex_to_rgb("#cfc6b8") # Warna permukaan
+    color_shadow = hex_to_rgb("#8f857d") # Warna bayangan/ketebalan
+
+    # 1. Gambar Bagian Bayangan/Ketebalan (Lapisan bawah)
+    # Kita geser sedikit ke bawah untuk efek 3D
+    offset_depth = 15
+    draw_chamfered_rect(ctx, x, y + offset_depth, width, height, 30)
+    ctx.set_source_rgb(*color_shadow)
+    ctx.fill()
+
+    # 2. Gambar Permukaan Utama (Lapisan atas)
+    draw_chamfered_rect(ctx, x, y, width, height, 30)
+    ctx.set_source_rgb(*color_light)
+    ctx.fill()
     
-    Args:
-        number_text (str): Angka yang ingin ditampilkan (misal: "5", "10").
-        size (int): Ukuran lebar dan tinggi gambar dalam piksel (misal: 128).
-        filename (str): Nama file output (misal: "coin_5.png").
+    # 3. Tambahkan sedikit detail retakan (Opsional - Dekorasi sederhana)
+    ctx.set_source_rgb(*color_shadow)
+    ctx.set_line_width(3)
+    
+    # Retakan kiri atas
+    ctx.move_to(x + 20, y + 40)
+    ctx.line_to(x + 50, y + 60)
+    ctx.line_to(x + 40, y + 90)
+    ctx.stroke()
+    
+    # Retakan kanan bawah
+    ctx.move_to(x + width - 20, y + height - 40)
+    ctx.line_to(x + width - 50, y + height - 60)
+    ctx.stroke()
+
+def draw_game_button(ctx, text, x, y, width, height, base_color_hex):
     """
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    Fungsi reusable untuk membuat tombol game 3D.
+    Args:
+        ctx: Context pycairo
+        text: Tulisan pada tombol (misal: EASY)
+        x, y: Posisi tombol
+        width, height: Ukuran tombol
+        base_color_hex: Warna utama tombol (hex code)
+    """
+    r, g, b = hex_to_rgb(base_color_hex)
+    
+    # Membuat warna bayangan (lebih gelap dari warna dasar)
+    # Kembali ke faktor 0.7 seperti semula, karena yang ingin digelapkan adalah background layar
+    shadow_factor = 0.7 
+    shadow_r, shadow_g, shadow_b = r * shadow_factor, g * shadow_factor, b * shadow_factor
+    
+    chamfer = 15 # Besaran potongan sudut
+    depth = 8    # Ketebalan efek 3D tombol (kembali ke 8)
+
+    # 1. Gambar Ketebalan Tombol (Bagian Bawah/Gelap)
+    draw_chamfered_rect(ctx, x, y + depth, width, height, chamfer)
+    ctx.set_source_rgb(shadow_r, shadow_g, shadow_b)
+    ctx.fill()
+
+    # 2. Gambar Wajah Tombol (Bagian Atas/Terang)
+    draw_chamfered_rect(ctx, x, y, width, height, chamfer)
+    ctx.set_source_rgb(r, g, b)
+    ctx.fill()
+
+    # 3. Highlight/Shine di bagian atas (Opsional, agar lebih 'pop')
+    ctx.save()
+    draw_chamfered_rect(ctx, x + 5, y + 5, width - 10, height/2 - 5, chamfer)
+    ctx.clip()
+    # Gradient putih transparan
+    pat = cairo.LinearGradient(x, y, x, y + height/2)
+    pat.add_color_stop_rgba(0, 1, 1, 1, 0.3)
+    pat.add_color_stop_rgba(1, 1, 1, 1, 0.0)
+    ctx.set_source(pat)
+    ctx.rectangle(x, y, width, height) # Fill area clip
+    ctx.fill()
+    ctx.restore()
+
+    # 4. Dekorasi "Lubang/Kawah" kecil di sudut (seperti di gambar contoh)
+    def draw_crater(cx, cy):
+        ctx.arc(cx, cy, 3, 0, 2 * math.pi)
+        ctx.set_source_rgb(shadow_r, shadow_g, shadow_b)
+        ctx.fill()
+    
+    draw_crater(x + 15, y + height - 15)
+    draw_crater(x + width - 15, y + 15)
+
+    # 5. Render Teks
+    ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+    ctx.set_font_size(28)
+    
+    # Hitung posisi teks agar di tengah (centering)
+    (x_bearing, y_bearing, text_width, text_height, x_advance, y_advance) = ctx.text_extents(text)
+    text_x = x + (width / 2) - (text_width / 2) - x_bearing
+    text_y = y + (height / 2) - (text_height / 2) - y_bearing
+    
+    # Warna teks putih dengan outline/shadow tipis
+    ctx.move_to(text_x + 1, text_y + 2) # Shadow teks
+    ctx.set_source_rgb(shadow_r, shadow_g, shadow_b)
+    ctx.show_text(text)
+    
+    ctx.move_to(text_x, text_y) # Teks Utama
+    ctx.set_source_rgb(1, 1, 1)
+    ctx.show_text(text)
+
+def main():
+    # Setup Canvas
+    WIDTH, HEIGHT = 500, 700
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
     ctx = cairo.Context(surface)
 
-    # --- Koordinat Pusat dan Radius ---
-    cx, cy = size / 2, size / 2
-    radius = size / 2 - 5 # Memberi sedikit margin di tepi
-
-    # --- LAPISAN 1: Dasar Koin (Gradien Radial Emas) ---
-    # Ini membuat koin terlihat bulat dan metalik
-    pattern = cairo.RadialGradient(cx, cy, radius * 0.1, cx, cy, radius)
-    pattern.add_color_stop_rgb(0, 1.0, 0.95, 0.6) # Emas kuning terang di tengah
-    pattern.add_color_stop_rgb(0.7, 1.0, 0.8, 0.2) # Emas oranye
-    pattern.add_color_stop_rgb(1, 0.8, 0.6, 0.1)   # Emas gelap di pinggir
+    # 1. Background Layar (Ungu Gelap seperti contoh)
+    # Ubah warna hex ini menjadi lebih gelap
+    ctx.set_source_rgb(*hex_to_rgb("#301a3d")) # Lebih gelap dari #4a2c5a
+    ctx.paint()
     
-    ctx.set_source(pattern)
-    ctx.arc(cx, cy, radius, 0, 2 * math.pi)
-    ctx.fill()
+    # Efek Kayu Background (Garis-garis tipis)
+    ctx.set_source_rgba(0, 0, 0, 0.15) # Sedikit lebih gelap agar terlihat di background yang lebih gelap
+    ctx.set_line_width(40)
+    for i in range(0, HEIGHT, 60):
+        ctx.move_to(0, i)
+        ctx.line_to(WIDTH, i)
+        ctx.stroke()
 
-    # --- LAPISAN 2: Cincin Pinggir (Outer Rim) ---
-    # Memberi definisi pada tepi koin
-    ctx.set_line_width(size * 0.05)
-    ctx.set_source_rgb(0.9, 0.7, 0.1) # Warna emas solid untuk pinggiran
-    ctx.arc(cx, cy, radius - (size * 0.025), 0, 2 * math.pi)
-    ctx.stroke()
+    # --- PENGGUNAAN FUNGSI REUSABLE ---
 
-    # --- LAPISAN 3: Cincin Dalam (Inner Border) ---
-    # Garis tipis yang memisahkan bagian luar dan dalam seperti di referensi
-    ctx.set_line_width(size * 0.02)
-    ctx.set_source_rgb(0.7, 0.5, 0.0) # Emas lebih gelap
-    inner_radius = radius * 0.75
-    ctx.arc(cx, cy, inner_radius, 0, 2 * math.pi)
-    ctx.stroke()
+    # 2. Gambar Papan Batu (Container)
+    slab_width = 350
+    slab_height = 400
+    slab_x = (WIDTH - slab_width) / 2
+    slab_y = 150
     
-    # --- LAPISAN 4: Efek Kilau Diagonal (Shiny Sheen) ---
-    # Ini adalah kunci untuk membuatnya terlihat seperti gambar referensi.
-    # Kita menggunakan gradien linear transparan diagonal.
-    sheen = cairo.LinearGradient(0, 0, size, size)
-    # Putih transparan -> Kuning sangat transparan -> Putih transparan
-    sheen.add_color_stop_rgba(0.3, 1, 1, 1, 0.0) 
-    sheen.add_color_stop_rgba(0.5, 1, 1, 0.8, 0.4) # Kilau utama di tengah
-    sheen.add_color_stop_rgba(0.7, 1, 1, 1, 0.0)
+    draw_stone_slab(ctx, slab_x, slab_y, slab_width, slab_height)
 
-    ctx.set_source(sheen)
-    ctx.arc(cx, cy, radius, 0, 2 * math.pi)
-    ctx.fill()
+    # Judul (Sekedar pelengkap)
+    ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+    ctx.set_font_size(40)
+    ctx.set_source_rgb(1, 1, 1)
+    title = "STONE MENU"
+    (xb, yb, tw, th, xa, ya) = ctx.text_extents(title)
+    ctx.move_to((WIDTH - tw)/2, slab_y + 60)
+    ctx.show_text(title)
 
-    # --- LAPISAN 5: Angka di Tengah ---
-    # Menggambar angka agar terlihat menonjol
-    
-    # Pengaturan Font (Gunakan font yang tebal dan jelas)
-    font_size = size * 0.5
-    ctx.select_font_face("Arial", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
-    ctx.set_font_size(font_size)
+    # 3. Gambar Tombol-tombol
+    button_width = 220
+    button_height = 60
+    button_x = (WIDTH - button_width) / 2
+    start_y = slab_y + 100
+    gap = 80 # Jarak antar tombol
 
-    # Menghitung posisi agar teks benar-benar di tengah
-    (x_bearing, y_bearing, width, height, x_advance, y_advance) = ctx.text_extents(number_text)
-    text_x = cx - width / 2 - x_bearing
-    text_y = cy + height / 2 - y_bearing # Perhatikan y-bearing seringkali negatif
+    # Tombol EASY (Kuning/Oranye)
+    draw_game_button(ctx, "EASY", button_x, start_y, button_width, button_height, "#ffcc00")
 
-    # 5a. Bayangan Teks (opsional, agar lebih kontras)
-    ctx.set_source_rgba(0.6, 0.4, 0.0, 0.5) # Warna bayangan gelap transparan
-    ctx.move_to(text_x + 2, text_y + 2)
-    ctx.show_text(number_text)
+    # Tombol MEDIUM (Hijau Muda)
+    draw_game_button(ctx, "MEDIUM", button_x, start_y + gap, button_width, button_height, "#8bc34a")
 
-    # 5b. Teks Utama
-    ctx.set_source_rgb(1.0, 1.0, 0.8) # Warna teks kuning pucat/krem
-    ctx.move_to(text_x, text_y)
-    ctx.show_text(number_text)
+    # Tombol HARD (Hijau Lebih Tua)
+    draw_game_button(ctx, "HARD", button_x, start_y + (gap * 2), button_width, button_height, "#689f38")
 
-    # --- Simpan Gambar ---
-    surface.write_to_png(filename)
-    print(f"Berhasil membuat: {filename}")
+    # Output
+    output_filename = "stone_menu_darker_screen_bg.png"
+    surface.write_to_png(output_filename)
+    print(f"Gambar berhasil dibuat: {output_filename}")
 
-# ==========================================
-# Contoh Penggunaan untuk Game Anda
-# ==========================================
-
-# Tentukan ukuran aset sprite yang Anda inginkan (misal 100x100 pixel)
-SPRITE_SIZE = 100
-
-# Hasilkan beberapa angka untuk contoh
-draw_coin_asset("5", SPRITE_SIZE, "coin_5.png")
-draw_coin_asset("10", SPRITE_SIZE, "coin_10.png")
-draw_coin_asset("42", SPRITE_SIZE, "coin_42.png")
-draw_coin_asset("?", SPRITE_SIZE, "coin_tanya.png") # Bisa juga simbol lain
+if __name__ == "__main__":
+    main()

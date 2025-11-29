@@ -2,9 +2,11 @@ import pygame
 import random
 import math
 
-from assets import render_bins_cairo, render_falling_block
-from assets import render_menu_button, create_cairo_background
-from assets import render_hud_panel, render_heart_icon, render_pause_button_asset, render_parchment_scroll
+# Pastikan import aset lengkap
+from assets import (
+    render_bins_cairo, render_falling_block,create_cairo_background, render_hud_panel, render_heart_icon, render_pause_button_asset, 
+    render_pause_slab, render_colored_button 
+)
 
 # ==============================================================================
 # KONFIGURASI
@@ -17,7 +19,6 @@ FALL_SPEED = BASE_FALL_SPEED
 MOVE_SPEED = 300
 NEW_FALL_INTERVAL = 1.2
 
-# Warna text (Lebih ke Cream/Emas pudar agar cocok dengan background gelap)
 TEXT_COLOR = (240, 230, 210) 
 TEXT_SHADOW = (20, 10, 5)
 
@@ -26,7 +27,6 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 pygame.display.set_caption("Angka Anjlok")
 
-# Font diganti ke Serif agar lebih klasik/fantasy
 HUD_FONT = pygame.font.SysFont('Georgia', 20, bold=True)
 TITLE_FONT = pygame.font.SysFont('Georgia', 42, bold=True)
 SUBTITLE_FONT = pygame.font.SysFont('Georgia', 24, italic=True)
@@ -65,17 +65,14 @@ class Game:
         self.score = 0
         self.lives = 3
         
-        # Load Assets
         self.background_img = create_cairo_background(WIDTH, HEIGHT)
         
-        # HUD Assets
         self.score_panel = render_hud_panel(140, 40)
         self.heart_icon = render_heart_icon(32)
         
-        # Pause Button Assets
         self.pause_btn_normal = render_pause_button_asset(48, hover=False)
         self.pause_btn_hover = render_pause_button_asset(48, hover=True)
-        self.pause_rect = pygame.Rect(WIDTH - 60, 10, 48, 48) # Pindah ke kanan atas
+        self.pause_rect = pygame.Rect(WIDTH - 60, 10, 48, 48)
         
         self.bins = []
         self.problems = []
@@ -157,7 +154,6 @@ class Game:
             self.falling.update(dt, move_dir)
             self.check_bin_collision()
         
-        # Level up speed
         if self.score > 0 and self.score % 5 == 0:
             new_level = 1 + self.score // 5
             if new_level > self.speed_level:
@@ -168,45 +164,32 @@ class Game:
             self.speed_message_timer -= dt
 
     def draw(self, surf, mouse_pos):
-        # 1. Background
         surf.blit(self.background_img, (0, 0))
-
-        # 2. Bins (Layer bawah)
         surf.blit(self.bin_surface, (0, HEIGHT - self.bin_surface.get_height()))
         
-        # 3. Falling Number
         if self.falling:
             self.falling.draw(surf)
 
-        # 4. HUD (Heads Up Display) - Dibuat Rapi
-        
-        # --- Score Panel (Kiri Atas) ---
         panel_x, panel_y = 10, 10
         surf.blit(self.score_panel, (panel_x, panel_y))
         
         score_text = HUD_FONT.render(f"Score: {self.score}", True, (255, 255, 255))
-        # Center text in panel
         sx = panel_x + (140 - score_text.get_width()) // 2
         sy = panel_y + (40 - score_text.get_height()) // 2
         surf.blit(score_text, (sx, sy))
 
-        # --- Lives (Tengah Atas) ---
-        # Gambar hati sejumlah nyawa
         start_x_lives = 170
         for i in range(self.lives):
             surf.blit(self.heart_icon, (start_x_lives + i * 35, 14))
 
-        # --- Pause Button (Kanan Atas) ---
         is_hover = self.pause_rect.collidepoint(mouse_pos)
         btn_img = self.pause_btn_hover if is_hover else self.pause_btn_normal
         surf.blit(btn_img, self.pause_rect.topleft)
 
-        # --- Level Up Message ---
         if self.speed_message_timer > 0:
             msg_font = pygame.font.SysFont('Georgia', 32, bold=True)
-            msg_s = msg_font.render("SPEED UP!", True, (0,0,0)) # Shadow
+            msg_s = msg_font.render("SPEED UP!", True, (0,0,0))
             msg = msg_font.render("SPEED UP!", True, (255, 220, 80))
-            
             cx, cy = WIDTH//2, 100
             surf.blit(msg_s, msg_s.get_rect(center=(cx+2, cy+2)))
             surf.blit(msg, msg.get_rect(center=(cx, cy)))
@@ -217,127 +200,13 @@ class Game:
 # ==============================================================================
 # MENU UI HELPERS
 # ==============================================================================
-def draw_button(surface, rect, text, mouse_pos):
-    hover = rect.collidepoint(mouse_pos)
-    btn_img = render_menu_button(rect.width, rect.height, text, hover=hover)
-    surface.blit(btn_img, rect.topleft)
-    return hover # Return status hover jika butuh suara dsb
-
 def draw_text_centered(surface, text, font, color, center_pos, shadow_offset=(2,2)):
-    # Shadow
     shad = font.render(text, True, TEXT_SHADOW)
     sr = shad.get_rect(center=(center_pos[0]+shadow_offset[0], center_pos[1]+shadow_offset[1]))
     surface.blit(shad, sr)
-    # Main
     txt = font.render(text, True, color)
     tr = txt.get_rect(center=center_pos)
     surface.blit(txt, tr)
-
-# ==============================================================================
-# MAIN MENU
-# ==============================================================================
-def main_menu():
-    ops_list = [
-        ("Penjumlahan (+)", ['+']),
-        ("Pengurangan (-)", ['-']),
-        ("Perkalian (x)", ['*']),
-        ("Pembagian (/)", ['/']),
-        ("Semua Operasi", ['+','-','*','/'])
-    ]
-    
-    # 1. Siapkan Background
-    scroll_bg = render_parchment_scroll(400, 500)
-    scroll_rect = scroll_bg.get_rect(center=(WIDTH//2, HEIGHT//2))
-    bg_img = create_cairo_background(WIDTH, HEIGHT)
-
-    # 2. PRE-RENDER TOMBOL (PENTING! Lakukan ini di luar loop)
-    # Kita buat 2 versi gambar untuk setiap tombol: Normal dan Hover
-    buttons = []
-    base_y = scroll_rect.top + 140
-    
-    for i, (label, ops) in enumerate(ops_list):
-        rect = pygame.Rect(0, 0, 260, 50)
-        rect.centerx = WIDTH // 2
-        rect.y = base_y + i * 65
-        
-        # Buat gambar SEKALI saja di sini
-        img_normal = render_menu_button(rect.width, rect.height, label, hover=False)
-        img_hover = render_menu_button(rect.width, rect.height, label, hover=True)
-        
-        # Simpan data tombol
-        buttons.append({
-            "rect": rect,
-            "ops": ops,
-            "img_normal": img_normal,
-            "img_hover": img_hover
-        })
-
-    while True:
-        mouse_pos = pygame.mouse.get_pos()
-        
-        # Gambar Background
-        screen.blit(bg_img, (0,0))
-        screen.blit(scroll_bg, scroll_rect)
-        
-        # Judul
-        draw_text_centered(screen, "PILIH MODE", TITLE_FONT, (60, 40, 20), (WIDTH//2, scroll_rect.top + 80))
-        # draw_text_centered(screen, "Tantangan Matematika", SUBTITLE_FONT, (100, 80, 60), (WIDTH//2, scroll_rect.top + 100))
-
-        # 3. Loop Gambar Tombol (Tinggal tempel gambar yang sudah jadi)
-        for btn in buttons:
-            rect = btn["rect"]
-            is_hover = rect.collidepoint(mouse_pos)
-            
-            # Pilih gambar berdasarkan posisi mouse
-            image_to_draw = btn["img_hover"] if is_hover else btn["img_normal"]
-            
-            screen.blit(image_to_draw, rect.topleft)
-
-        # Event Handling
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return None
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    for btn in buttons:
-                        if btn["rect"].collidepoint(mouse_pos):
-                            return btn["ops"] # Kembalikan operasi yang dipilih
-
-        pygame.display.flip()
-        clock.tick(60)
-
-# ==============================================================================
-# PAUSE POPUP
-# ==============================================================================
-def pause_popup(surface, mouse_pos):
-    # Overlay gelap
-    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 150))
-    surface.blit(overlay, (0, 0))
-
-    # Scroll Background
-    w, h = 320, 350
-    scroll = render_parchment_scroll(w, h)
-    cx, cy = WIDTH//2, HEIGHT//2
-    rect_scroll = scroll.get_rect(center=(cx, cy))
-    surface.blit(scroll, rect_scroll)
-
-    draw_text_centered(surface, "PAUSE", TITLE_FONT, (60, 40, 20), (cx, rect_scroll.top +680))
-
-    btn_w, btn_h = 220, 50
-    gap = 15
-    start_y = rect_scroll.top + 120
-    
-    resume_rect = pygame.Rect(cx - btn_w//2, start_y, btn_w, btn_h)
-    restart_rect = pygame.Rect(cx - btn_w//2, start_y + btn_h + gap, btn_w, btn_h)
-    menu_rect = pygame.Rect(cx - btn_w//2, start_y + 2*(btn_h + gap), btn_w, btn_h)
-
-    draw_button(surface, resume_rect, "Lanjutkan", mouse_pos)
-    draw_button(surface, restart_rect, "Ulangi", mouse_pos)
-    draw_button(surface, menu_rect, "Keluar ke Menu", mouse_pos)
-
-    return resume_rect, restart_rect, menu_rect
 
 def blur_surface(surface, scale_factor=0.1):
     """
@@ -353,12 +222,102 @@ def blur_surface(surface, scale_factor=0.1):
     # 2. Besarkan kembali (Pygame akan menghaluskan pixelnya -> jadi blur)
     blurred_surf = pygame.transform.smoothscale(small_surf, (w, h))
     
-    # 3. Tambahkan sedikit tint gelap agar teks putih di atasnya lebih terbaca
+    # 3. Tambahkan sedikit tint gelap agar teks/menu di atasnya lebih kontras
     dark_tint = pygame.Surface((w, h), pygame.SRCALPHA)
-    dark_tint.fill((0, 0, 0, 100)) # Hitam transparan
+    dark_tint.fill((0, 0, 0, 100)) # Hitam transparan (40% opacity)
     blurred_surf.blit(dark_tint, (0, 0))
     
     return blurred_surf
+
+# ==============================================================================
+# MAIN MENU
+# ==============================================================================
+# ==============================================================================
+# MAIN MENU (STONE STYLE)
+# ==============================================================================
+def main_menu():
+    # Format: (Label Text, Operasi List, Warna Hex)
+    ops_list = [
+        ("PENJUMLAHAN (+)", ['+'],             "#29b6f6"), # Biru Langit
+        ("PENGURANGAN (-)", ['-'],             "#ef5350"), # Merah
+        ("PERKALIAN (x)",   ['*'],             "#ffa726"), # Oranye
+        ("PEMBAGIAN (/)",   ['/'],             "#66bb6a"), # Hijau
+        ("SEMUA OPERASI",   ['+','-','*','/'], "#ab47bc")  # Ungu
+    ]
+    
+    # --- UBAH DISINI: Ganti Parchment jadi Stone Slab (Seperti Pause Menu) ---
+    slab_w, slab_h = 400, 550 # Tinggi disesuaikan agar muat 5 tombol
+    
+    # "PILIH MODE" akan otomatis terukir di batu lewat fungsi ini
+    menu_bg_img = render_pause_slab(slab_w, slab_h, "PILIH MODE") 
+    menu_bg_rect = menu_bg_img.get_rect(center=(WIDTH//2, HEIGHT//2))
+    
+    # Background Layar (Tanah/World)
+    bg_world_img = create_cairo_background(WIDTH, HEIGHT)
+
+    # Setup Tombol
+    buttons = []
+    
+    btn_width = 280
+    btn_height = 60
+    gap = 15
+    
+    # Hitung posisi awal Y tombol
+    # Kita mulai sedikit di bawah judul (judul ada di y=70 pada slab)
+    # Jadi kita mulai render tombol dari y=110 relatif terhadap slab
+    start_y_offset = 110 
+    
+    for i, (label, ops, color_hex) in enumerate(ops_list):
+        rect = pygame.Rect(0, 0, btn_width, btn_height)
+        
+        # Posisi X: Tengah layar
+        rect.centerx = WIDTH // 2
+        
+        # Posisi Y: Dari atas slab + offset + urutan tombol
+        rect.y = menu_bg_rect.top + start_y_offset + i * (btn_height + gap)
+        
+        # Render tombol warna-warni
+        img_normal = render_colored_button(btn_width, btn_height, label, color_hex, hover=False)
+        img_hover = render_colored_button(btn_width, btn_height, label, color_hex, hover=True)
+        
+        buttons.append({
+            "rect": rect,
+            "ops": ops,
+            "img_normal": img_normal,
+            "img_hover": img_hover
+        })
+
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        
+        # 1. Gambar Background World
+        screen.blit(bg_world_img, (0,0))
+        
+        # 2. Gambar Papan Batu (Slab)
+        # Judul "PILIH MODE" sudah ada di dalam gambar ini
+        screen.blit(menu_bg_img, menu_bg_rect)
+        
+        # 3. Gambar Tombol Warna-warni
+        for btn in buttons:
+            rect = btn["rect"]
+            is_hover = rect.collidepoint(mouse_pos)
+            
+            image_to_draw = btn["img_hover"] if is_hover else btn["img_normal"]
+            screen.blit(image_to_draw, rect.topleft)
+
+        # 4. Event Loop
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return None
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    for btn in buttons:
+                        if btn["rect"].collidepoint(mouse_pos):
+                            return btn["ops"]
+
+        pygame.display.flip()
+        clock.tick(60)
 
 # ==============================================================================
 # MAIN LOOP
@@ -367,47 +326,37 @@ def main():
     state = "MENU"
     game = None
     paused = False
+    cached_blur_bg = None # Variabel untuk menyimpan background blur
     
     # ==========================================
-    # 1. SETUP ASET PAUSE (PRE-RENDER / CACHE)
+    # SETUP ASET PAUSE BARU
     # ==========================================
-    # Kita buat gambar-gambarnya SEKALI saja di sini agar tidak glitch/berat.
     
-    # A. Overlay Gelap & Kertas Background
-    pause_overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    pause_overlay.fill((0, 0, 0, 150)) # Hitam transparan
+    # 1. Papan Batu (Slab)
+    slab_w, slab_h = 350, 400
+    pause_slab_img = render_pause_slab(slab_w, slab_h, "TERJEDA") 
+    pause_slab_rect = pause_slab_img.get_rect(center=(WIDTH//2, HEIGHT//2))
 
-    pause_paper_w, pause_paper_h = 320, 350
-    pause_paper_img = render_parchment_scroll(pause_paper_w, pause_paper_h)
-    pause_paper_rect = pause_paper_img.get_rect(center=(WIDTH//2, HEIGHT//2))
+    # 2. Tombol Warna-warni
+    pause_btn_w, pause_btn_h = 220, 60
+    pause_gap = 20
+    slab_start_y = pause_slab_rect.top + 100 
 
-    # B. Judul Pause
-    pause_title = TITLE_FONT.render("PAUSE", True, (60, 40, 20))
-    pause_title_rect = pause_title.get_rect(center=(WIDTH//2, pause_paper_rect.top + 60))
-
-    # C. Tombol-tombol Pause (Normal & Hover)
-    pause_btn_w, pause_btn_h = 220, 50
-    pause_gap = 15
-    pause_start_y = pause_paper_rect.top + 120
-    
-    # Data konfigurasi tombol
     pause_btn_data = [
-        {"text": "Lanjutkan",      "action": "resume"},
-        {"text": "Ulangi",         "action": "restart"},
-        {"text": "Keluar ke Menu", "action": "menu"}
+        {"text": "LANJUT",   "action": "resume",  "color": "#8bc34a"}, # Hijau
+        {"text": "ULANGI",   "action": "restart", "color": "#ffcc00"}, # Kuning
+        {"text": "KELUAR",   "action": "menu",    "color": "#e53935"}  # Merah
     ]
 
     pause_buttons = []
     
     for i, data in enumerate(pause_btn_data):
-        # Tentukan posisi rect
         rect = pygame.Rect(0, 0, pause_btn_w, pause_btn_h)
         rect.centerx = WIDTH // 2
-        rect.y = pause_start_y + i * (pause_btn_h + pause_gap)
+        rect.y = slab_start_y + i * (pause_btn_h + pause_gap)
         
-        # RENDER GAMBAR SEKARANG (Agar tidak diulang-ulang)
-        img_normal = render_menu_button(pause_btn_w, pause_btn_h, data["text"], hover=False)
-        img_hover = render_menu_button(pause_btn_w, pause_btn_h, data["text"], hover=True)
+        img_normal = render_colored_button(pause_btn_w, pause_btn_h, data["text"], data["color"], hover=False)
+        img_hover = render_colored_button(pause_btn_w, pause_btn_h, data["text"], data["color"], hover=True)
         
         pause_buttons.append({
             "rect": rect,
@@ -416,9 +365,8 @@ def main():
             "img_hover": img_hover
         })
         
-    cached_blur_bg = None
     # ==========================================
-    # 2. GAME LOOP UTAMA
+    # GAME LOOP UTAMA
     # ==========================================
     while True:
         dt = clock.tick(FPS) / 1000.0
@@ -426,8 +374,8 @@ def main():
 
         # --- MODE MENU ---
         if state == "MENU":
-            allowed_ops = main_menu() # Pastikan main_menu() Anda sudah yang versi diperbaiki (tidak glitch)
-            if allowed_ops is None: return # Quit
+            allowed_ops = main_menu() 
+            if allowed_ops is None: return
             game = Game(allowed_ops)
             paused = False
             state = "GAME"
@@ -439,10 +387,11 @@ def main():
                 pygame.quit(); return
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # 1. Klik Tombol Pause Kecil (Di Pojok Kanan Atas Game)
+                # 1. Klik Tombol Pause Kecil
                 if not paused and not game.is_game_over():
                     if game.pause_rect.collidepoint(mouse_pos):
                         paused = True
+                        cached_blur_bg = None # Reset cache blur agar update
                 
                 # 2. Klik Menu Pause (Saat sedang Pause)
                 elif paused:
@@ -453,11 +402,11 @@ def main():
                                 paused = False
                                 cached_blur_bg = None
                             elif act == "restart":
-                                game = Game(game.allowed_ops) # Reset game
+                                game = Game(game.allowed_ops)
                                 paused = False
                                 cached_blur_bg = None
                             elif act == "menu":
-                                state = "MENU" # Balik ke menu utama
+                                state = "MENU"
                                 paused = False
                                 cached_blur_bg = None
 
@@ -475,8 +424,7 @@ def main():
                 elif event.key == pygame.K_ESCAPE:
                     if not game.is_game_over(): 
                         paused = not paused
-                        if not paused:
-                            cached_blur_bg = None
+                        if not paused: cached_blur_bg = None
 
             elif event.type == pygame.KEYUP:
                 if event.key in [pygame.K_LEFT, pygame.K_RIGHT]:
@@ -494,24 +442,21 @@ def main():
         # Gambar Game
         game.draw(screen, mouse_pos)
 
-        # --- GAMBAR OVERLAY (PAUSE / GAME OVER) ---
+        # --- DRAW PAUSE MENU (BLUR + NEW ASSETS) ---
         
         if paused:
-            # LOGIKA BLUR BARU:
-            # Jika belum ada gambar blur tersimpan, buat sekarang
+            # 1. Buat Blur Background (Jika belum ada di cache)
             if cached_blur_bg is None:
-                # Ambil gambar layar game saat ini
                 screen_copy = screen.copy()
-                # Buat versi blurnya (skala 0.1 biar cepat)
                 cached_blur_bg = blur_surface(screen_copy, scale_factor=0.1)
             
-            # Tampilkan gambar blur (menutup soal matematika)
+            # Tampilkan Blur
             screen.blit(cached_blur_bg, (0, 0))
 
-            # Tampilkan Kertas & Tombol (Sama seperti sebelumnya)
-            screen.blit(pause_paper_img, pause_paper_rect)
-            screen.blit(pause_title, pause_title_rect)
+            # 2. Tampilkan Menu Batu Baru
+            screen.blit(pause_slab_img, pause_slab_rect)
             
+            # 3. Tampilkan Tombol Berwarna
             for btn in pause_buttons:
                 is_hover = btn["rect"].collidepoint(mouse_pos)
                 image_to_draw = btn["img_hover"] if is_hover else btn["img_normal"]
