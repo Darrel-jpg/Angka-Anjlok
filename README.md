@@ -88,10 +88,6 @@ cd angka-anjlok</code></pre>
             <td>Gerakkan koin ke Kanan</td>
         </tr>
         <tr>
-            <td>⬇️ <strong>Panah Bawah / Spasi</strong></td>
-            <td>Jatuhkan koin lebih cepat (Drop)</td>
-        </tr>
-        <tr>
             <td><strong>ESC</strong> / <strong>Klik Ikon II</strong></td>
             <td>Pause Game</td>
         </tr>
