@@ -58,10 +58,11 @@ class FallingNumber:
         surf.blit(self.image, (self.x, self.y))
 
 class Game:
-    def __init__(self, allowed_ops):
+    def __init__(self, allowed_ops, difficulty): # <--- Tambah parameter difficulty
         global FALL_SPEED
         FALL_SPEED = BASE_FALL_SPEED
         self.allowed_ops = allowed_ops
+        self.difficulty = difficulty  # "EASY", "MEDIUM", "HARD"
         self.score = 0
         self.lives = 3
         
@@ -84,6 +85,52 @@ class Game:
         
         self.make_problems_and_bins()
 
+    def generate_expression(self, is_complex):
+        """
+        Membuat soal matematika.
+        is_complex = True (3 angka: a op b op c)
+        is_complex = False (2 angka: a op b)
+        """
+        while True:
+            ops = self.allowed_ops
+            
+            # Buat angka dasar
+            nums = [random.randint(1, 12) for _ in range(3 if is_complex else 2)]
+            selected_ops = [random.choice(ops) for _ in range(2 if is_complex else 1)]
+            
+            # Susun string ekspresi
+            if not is_complex:
+                # Logika Level EASY (2 Angka)
+                a, b = nums[0], nums[1]
+                op = selected_ops[0]
+                
+                # Khusus pembagian agar bulat
+                if op == '/':
+                    a = b * random.randint(1, 10)
+                
+                expr = f"{a} {op} {b}"
+            
+            else:
+                # Logika Level MEDIUM/HARD (3 Angka)
+                # Format: a op1 b op2 c
+                expr = f"{nums[0]} {selected_ops[0]} {nums[1]}"
+                
+                # Kita evaluasi tahap 1 dulu untuk memastikan pembagian aman (opsional, tapi lebih rapi)
+                # Namun cara termudah: Genererate string -> Eval -> Cek jika Float/Desimal -> Ulangi
+                expr += f" {selected_ops[1]} {nums[2]}"
+
+            try:
+                ans = eval(expr)
+                
+                # Validasi Soal:
+                # 1. Harus Integer (tidak desimal)
+                # 2. Tidak boleh negatif (opsional, tapi lebih aman untuk anak)
+                # 3. Hasil tidak boleh terlalu besar (> 100) agar mudah dibaca
+                if ans == int(ans) and 0 <= ans <= 100:
+                    return expr, int(ans)
+            except ZeroDivisionError:
+                continue
+
     def make_problems_and_bins(self):
         bottom_h = 120
         bin_h = 84
@@ -94,19 +141,31 @@ class Game:
         self.problems = []
         answers = []
         
-        while len(answers) < BIN_COUNT:
-            a, b = random.randint(1, 12), random.randint(1, 12)
-            op = random.choice(self.allowed_ops)
-            if op == '/':
-                b = random.randint(1, 12)
-                a = b * random.randint(1, 6)
-            expr = f"{a} {op} {b}"
-            ans = eval(expr)
-            if isinstance(ans, float): ans = int(round(ans))
-            if ans in answers: continue
+        # Tentukan mana bin yang susah (3 angka) berdasarkan Difficulty
+        # Easy: [] (Kosong)
+        # Medium: [0, 2] atau random 2 index
+        # Hard: [0, 1, 2, 3] (Semua)
+        complex_indices = []
+        if self.difficulty == "MEDIUM":
+            complex_indices = random.sample(range(BIN_COUNT), 2) # Pilih 2 bin acak jadi susah
+        elif self.difficulty == "HARD":
+            complex_indices = list(range(BIN_COUNT)) # Semua bin susah
+
+        # Loop sampai kita punya 4 soal unik dengan jawaban unik
+        while len(self.problems) < BIN_COUNT:
+            current_idx = len(self.problems)
+            is_complex = current_idx in complex_indices
+            
+            expr, ans = self.generate_expression(is_complex)
+            
+            # Pastikan jawaban belum ada di bin lain (biar user tidak bingung)
+            if ans in answers: 
+                continue
+                
             answers.append(ans)
             self.problems.append(Problem(expr, ans))
 
+        # Setup Rectangles untuk visualisasi
         bin_labels = []
         local_rects = []
         for i, p in enumerate(self.problems):
@@ -173,6 +232,11 @@ class Game:
         panel_x, panel_y = 10, 10
         surf.blit(self.score_panel, (panel_x, panel_y))
         
+        # Tambahkan Info Difficulty di HUD
+        diff_font = pygame.font.SysFont('Georgia', 14, bold=True)
+        diff_text = diff_font.render(self.difficulty, True, (200, 200, 200))
+        surf.blit(diff_text, (panel_x + 10, panel_y + 45))
+
         score_text = HUD_FONT.render(f"Score: {self.score}", True, (255, 255, 255))
         sx = panel_x + (140 - score_text.get_width()) // 2
         sy = panel_y + (40 - score_text.get_height()) // 2
@@ -196,7 +260,6 @@ class Game:
 
     def is_game_over(self):
         return self.lives <= 0
-
 # ==============================================================================
 # MENU UI HELPERS
 # ==============================================================================
@@ -229,9 +292,67 @@ def blur_surface(surface, scale_factor=0.1):
     
     return blurred_surf
 
+
 # ==============================================================================
-# MAIN MENU
+# DIFFICULTY MENU
 # ==============================================================================
+def difficulty_menu():
+    # Data Tombol: (Label, ID Difficulty, Warna)
+    levels = [
+        ("MUDAH",  "EASY",   "#81c784"), # Hijau Muda
+        ("SEDANG",  "MEDIUM", "#ffb74d"), # Oranye
+        ("SULIT",  "HARD",   "#e57373")  # Merah Muda
+    ]
+    
+    slab_w, slab_h = 350, 400
+    bg_slab = render_pause_slab(slab_w, slab_h, "SELECT LEVEL")
+    bg_slab_rect = bg_slab.get_rect(center=(WIDTH//2, HEIGHT//2))
+    
+    bg_world = create_cairo_background(WIDTH, HEIGHT)
+    
+    buttons = []
+    btn_w, btn_h = 240, 60
+    gap = 20
+    start_y = bg_slab_rect.top + 120
+    
+    for i, (label, diff_id, color) in enumerate(levels):
+        rect = pygame.Rect(0, 0, btn_w, btn_h)
+        rect.centerx = WIDTH // 2
+        rect.y = start_y + i * (btn_h + gap)
+        
+        img_normal = render_colored_button(btn_w, btn_h, label, color, hover=False)
+        img_hover = render_colored_button(btn_w, btn_h, label, color, hover=True)
+        
+        buttons.append({
+            "rect": rect,
+            "id": diff_id,
+            "img_normal": img_normal,
+            "img_hover": img_hover
+        })
+        
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        screen.blit(bg_world, (0,0))
+        screen.blit(bg_slab, bg_slab_rect)
+        
+        for btn in buttons:
+            is_hover = btn["rect"].collidepoint(mouse_pos)
+            img = btn["img_hover"] if is_hover else btn["img_normal"]
+            screen.blit(img, btn["rect"])
+            
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return None
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    for btn in buttons:
+                        if btn["rect"].collidepoint(mouse_pos):
+                            return btn["id"] # Return "EASY", "MEDIUM", atau "HARD"
+                            
+        pygame.display.flip()
+        clock.tick(60)
+
 # ==============================================================================
 # MAIN MENU (STONE STYLE)
 # ==============================================================================
@@ -322,78 +443,77 @@ def main_menu():
 # ==============================================================================
 # MAIN LOOP
 # ==============================================================================
+# ==============================================================================
+# MAIN LOOP
+# ==============================================================================
 def main():
-    state = "MENU"
+    state = "MENU_OPS" # Ubah state awal agar jelas alurnya
     game = None
     paused = False
-    cached_blur_bg = None # Variabel untuk menyimpan background blur
+    cached_blur_bg = None 
+    selected_ops = [] # Simpan operasi yang dipilih
+    selected_diff = "EASY" # Simpan kesulitan
     
-    # ==========================================
-    # SETUP ASET PAUSE BARU
-    # ==========================================
-    
-    # 1. Papan Batu (Slab)
+    # Aset Pause Menu (Sama seperti sebelumnya)
     slab_w, slab_h = 350, 400
-    pause_slab_img = render_pause_slab(slab_w, slab_h, "TERJEDA") 
+    pause_slab_img = render_pause_slab(slab_w, slab_h, "PAUSE") 
     pause_slab_rect = pause_slab_img.get_rect(center=(WIDTH//2, HEIGHT//2))
 
-    # 2. Tombol Warna-warni
     pause_btn_w, pause_btn_h = 220, 60
     pause_gap = 20
     slab_start_y = pause_slab_rect.top + 100 
 
     pause_btn_data = [
-        {"text": "LANJUT",   "action": "resume",  "color": "#8bc34a"}, # Hijau
-        {"text": "ULANGI",   "action": "restart", "color": "#ffcc00"}, # Kuning
-        {"text": "KELUAR",   "action": "menu",    "color": "#e53935"}  # Merah
+        {"text": "LANJUT",   "action": "resume",  "color": "#8bc34a"},
+        {"text": "ULANGI",   "action": "restart", "color": "#ffcc00"},
+        {"text": "KELUAR",   "action": "menu",    "color": "#e53935"}
     ]
 
     pause_buttons = []
-    
     for i, data in enumerate(pause_btn_data):
         rect = pygame.Rect(0, 0, pause_btn_w, pause_btn_h)
         rect.centerx = WIDTH // 2
         rect.y = slab_start_y + i * (pause_btn_h + pause_gap)
-        
         img_normal = render_colored_button(pause_btn_w, pause_btn_h, data["text"], data["color"], hover=False)
         img_hover = render_colored_button(pause_btn_w, pause_btn_h, data["text"], data["color"], hover=True)
+        pause_buttons.append({"rect": rect, "action": data["action"], "img_normal": img_normal, "img_hover": img_hover})
         
-        pause_buttons.append({
-            "rect": rect,
-            "action": data["action"],
-            "img_normal": img_normal,
-            "img_hover": img_hover
-        })
-        
-    # ==========================================
-    # GAME LOOP UTAMA
-    # ==========================================
     while True:
         dt = clock.tick(FPS) / 1000.0
         mouse_pos = pygame.mouse.get_pos()
 
-        # --- MODE MENU ---
-        if state == "MENU":
-            allowed_ops = main_menu() 
-            if allowed_ops is None: return
-            game = Game(allowed_ops)
+        # --- FLOW MENU ---
+        if state == "MENU_OPS":
+            # 1. Pilih Operasi (+, -, x, /)
+            ops = main_menu() 
+            if ops is None: return
+            selected_ops = ops
+            state = "MENU_DIFF"
+            continue
+            
+        elif state == "MENU_DIFF":
+            # 2. Pilih Kesulitan
+            diff = difficulty_menu()
+            if diff is None: return
+            selected_diff = diff
+            
+            # 3. Mulai Game
+            game = Game(selected_ops, selected_diff) # Kirim difficulty ke Game
             paused = False
             state = "GAME"
             continue
 
-        # --- EVENT HANDLING ---
+        # --- GAMEPLAY ---
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit(); return
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # 1. Klik Tombol Pause Kecil
                 if not paused and not game.is_game_over():
                     if game.pause_rect.collidepoint(mouse_pos):
                         paused = True
-                        cached_blur_bg = None # Reset cache blur agar update
+                        cached_blur_bg = None
                 
-                # 2. Klik Menu Pause (Saat sedang Pause)
                 elif paused:
                     for btn in pause_buttons:
                         if btn["rect"].collidepoint(mouse_pos):
@@ -402,23 +522,21 @@ def main():
                                 paused = False
                                 cached_blur_bg = None
                             elif act == "restart":
-                                game = Game(game.allowed_ops)
+                                game = Game(game.allowed_ops, game.difficulty) # Restart dengan setting sama
                                 paused = False
                                 cached_blur_bg = None
                             elif act == "menu":
-                                state = "MENU"
+                                state = "MENU_OPS" # Balik ke pemilihan operasi
                                 paused = False
                                 cached_blur_bg = None
 
-                # 3. Klik Game Over
                 elif game.is_game_over():
-                     state = "MENU"
+                     state = "MENU_OPS"
 
-            # Shortcut Keyboard
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT: game.move_dir = -1
                 elif event.key == pygame.K_RIGHT: game.move_dir = 1
-                elif event.key == pygame.K_r: state = "MENU"
+                elif event.key == pygame.K_r: state = "MENU_OPS"
                 elif event.key == pygame.K_SPACE and game.falling and not paused:
                     game.falling.y = HEIGHT
                 elif event.key == pygame.K_ESCAPE:
@@ -430,7 +548,6 @@ def main():
                 if event.key in [pygame.K_LEFT, pygame.K_RIGHT]:
                     game.move_dir = 0
 
-        # --- UPDATE & DRAW ---
         move_dir = 0
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]: move_dir = -1
@@ -439,31 +556,20 @@ def main():
         if not paused and not game.is_game_over():
             game.update(dt, move_dir)
 
-        # Gambar Game
         game.draw(screen, mouse_pos)
 
-        # --- DRAW PAUSE MENU (BLUR + NEW ASSETS) ---
-        
         if paused:
-            # 1. Buat Blur Background (Jika belum ada di cache)
             if cached_blur_bg is None:
                 screen_copy = screen.copy()
                 cached_blur_bg = blur_surface(screen_copy, scale_factor=0.1)
-            
-            # Tampilkan Blur
             screen.blit(cached_blur_bg, (0, 0))
-
-            # 2. Tampilkan Menu Batu Baru
             screen.blit(pause_slab_img, pause_slab_rect)
-            
-            # 3. Tampilkan Tombol Berwarna
             for btn in pause_buttons:
                 is_hover = btn["rect"].collidepoint(mouse_pos)
                 image_to_draw = btn["img_hover"] if is_hover else btn["img_normal"]
                 screen.blit(image_to_draw, btn["rect"])
 
         elif game.is_game_over():
-            # Overlay sederhana untuk game over
             ov = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
             ov.fill((0, 0, 0, 180))
             screen.blit(ov, (0, 0))
