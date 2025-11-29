@@ -30,7 +30,7 @@
         </ul>
     </li>
     <li>
-        <strong>uD83C\uDFAE Tingkat Kesulitan:</strong>
+        <strong>Tingkat Kesulitan:</strong>
         <ul>
             <li><strong>MUDAH:</strong> Soal 2 digit sederhana.</li>
             <li><strong>SEDANG:</strong> Kombinasi angka lebih variatif.</li>
