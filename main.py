@@ -3,8 +3,8 @@ import random
 import math
 
 from assets import (
-    render_bins_cairo, render_falling_block,create_cairo_background, render_hud_panel, render_heart_icon, render_pause_button_asset, 
-    render_pause_slab, render_colored_button 
+    draw_coin_sack, draw_falling_coin, draw_background_game, draw_hud_panel, draw_heart_icon, draw_pause_icon, 
+    draw_popup_menu, draw_colored_button 
 )
 
 WIDTH, HEIGHT = int(480*1.2), int(640*1.2)
@@ -37,7 +37,7 @@ class FallingNumber:
         self.value = value
         self.x = x
         self.y = y
-        self.image = render_falling_block(value)
+        self.image = draw_falling_coin(value)
         self.w = self.image.get_width()
         self.h = self.image.get_height()
 
@@ -59,13 +59,13 @@ class Game:
         self.score = 0
         self.lives = 3
         
-        self.background_img = create_cairo_background(WIDTH, HEIGHT)
+        self.background_img = draw_background_game(WIDTH, HEIGHT)
         
-        self.score_panel = render_hud_panel(140, 40)
-        self.heart_icon = render_heart_icon(32)
+        self.score_panel = draw_hud_panel(140, 40)
+        self.heart_icon = draw_heart_icon(32)
         
-        self.pause_btn_normal = render_pause_button_asset(48, hover=False)
-        self.pause_btn_hover = render_pause_button_asset(48, hover=True)
+        self.pause_btn_normal = draw_pause_icon(48, hover=False)
+        self.pause_btn_hover = draw_pause_icon(48, hover=True)
         self.pause_rect = pygame.Rect(WIDTH - 60, 10, 48, 48)
         
         self.bins = []
@@ -146,7 +146,7 @@ class Game:
             local_rects.append((x, local_y, w, bin_h))
             bin_labels.append(p.expr)
         
-        self.bin_surface = render_bins_cairo(WIDTH, bottom_h, local_rects, bin_labels)
+        self.bin_surface = draw_coin_sack(WIDTH, bottom_h, local_rects, bin_labels)
 
     def spawn_falling(self):
         target = random.choice(self.problems)
@@ -257,9 +257,9 @@ def difficulty_menu():
     ]
     
     slab_w, slab_h = 350, 400
-    bg_slab = render_pause_slab(slab_w, slab_h, "PILIH LEVEL")
+    bg_slab = draw_popup_menu(slab_w, slab_h, "PILIH LEVEL")
     bg_slab_rect = bg_slab.get_rect(center=(WIDTH//2, HEIGHT//2))
-    bg_world = create_cairo_background(WIDTH, HEIGHT)
+    bg_world = draw_background_game(WIDTH, HEIGHT)
     buttons = []
     btn_w, btn_h = 240, 60
     gap = 20
@@ -270,8 +270,8 @@ def difficulty_menu():
         rect.centerx = WIDTH // 2
         rect.y = start_y + i * (btn_h + gap)
         
-        img_normal = render_colored_button(btn_w, btn_h, label, color, hover=False)
-        img_hover = render_colored_button(btn_w, btn_h, label, color, hover=True)
+        img_normal = draw_colored_button(btn_w, btn_h, label, color, hover=False)
+        img_hover = draw_colored_button(btn_w, btn_h, label, color, hover=True)
         
         buttons.append({
             "rect": rect,
@@ -313,9 +313,9 @@ def main_menu():
     ]
     
     slab_w, slab_h = 400, 550 
-    menu_bg_img = render_pause_slab(slab_w, slab_h, "PILIH MODE") 
+    menu_bg_img = draw_popup_menu(slab_w, slab_h, "PILIH MODE") 
     menu_bg_rect = menu_bg_img.get_rect(center=(WIDTH//2, HEIGHT//2))    
-    bg_world_img = create_cairo_background(WIDTH, HEIGHT)
+    bg_world_img = draw_background_game(WIDTH, HEIGHT)
     buttons = []    
     btn_width = 280
     btn_height = 60
@@ -326,8 +326,8 @@ def main_menu():
         rect = pygame.Rect(0, 0, btn_width, btn_height)        
         rect.centerx = WIDTH // 2
         rect.y = menu_bg_rect.top + start_y_offset + i * (btn_height + gap)        
-        img_normal = render_colored_button(btn_width, btn_height, label, color_hex, hover=False)
-        img_hover = render_colored_button(btn_width, btn_height, label, color_hex, hover=True)
+        img_normal = draw_colored_button(btn_width, btn_height, label, color_hex, hover=False)
+        img_hover = draw_colored_button(btn_width, btn_height, label, color_hex, hover=True)
         
         buttons.append({
             "rect": rect,
@@ -368,7 +368,7 @@ def main():
     selected_ops = [] 
     selected_diff = "EASY" 
     slab_w, slab_h = 350, 400
-    pause_slab_img = render_pause_slab(slab_w, slab_h, "PAUSE") 
+    pause_slab_img = draw_popup_menu(slab_w, slab_h, "PAUSE") 
     pause_slab_rect = pause_slab_img.get_rect(center=(WIDTH//2, HEIGHT//2))
     pause_btn_w, pause_btn_h = 220, 60
     pause_gap = 20
@@ -384,8 +384,8 @@ def main():
         rect = pygame.Rect(0, 0, pause_btn_w, pause_btn_h)
         rect.centerx = WIDTH // 2
         rect.y = slab_start_y + i * (pause_btn_h + pause_gap)
-        img_normal = render_colored_button(pause_btn_w, pause_btn_h, data["text"], data["color"], hover=False)
-        img_hover = render_colored_button(pause_btn_w, pause_btn_h, data["text"], data["color"], hover=True)
+        img_normal = draw_colored_button(pause_btn_w, pause_btn_h, data["text"], data["color"], hover=False)
+        img_hover = draw_colored_button(pause_btn_w, pause_btn_h, data["text"], data["color"], hover=True)
         pause_buttons.append({"rect": rect, "action": data["action"], "img_normal": img_normal, "img_hover": img_hover})
         
     while True:

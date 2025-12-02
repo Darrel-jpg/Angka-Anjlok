@@ -15,7 +15,7 @@ def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i+2], 16)/255.0 for i in (0, 2, 4))
 
-def draw_chamfered_rect(ctx, x, y, width, height, chamfer_size):
+def draw_button_base(ctx, x, y, width, height, chamfer_size):
     ctx.new_path()
     ctx.move_to(x + chamfer_size, y)
     ctx.line_to(x + width - chamfer_size, y)
@@ -65,7 +65,7 @@ def draw_stone_texture(ctx, w, h, dark_mode=False):
         ctx.arc(mx, my, random.randint(10, 30), 0, 2*math.pi)
         ctx.fill()
 
-def render_hud_panel(width, height):
+def draw_hud_panel(width, height):
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
     ctx = cairo.Context(surf)
     
@@ -88,7 +88,7 @@ def render_hud_panel(width, height):
     
     return cairo_surface_to_pygame(surf)
 
-def render_heart_icon(size):
+def draw_heart_icon(size):
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
     ctx = cairo.Context(surf)
     
@@ -113,7 +113,7 @@ def render_heart_icon(size):
     
     return cairo_surface_to_pygame(surf)
 
-def render_pause_button_asset(size, hover=False):
+def draw_pause_icon(size, hover=False):
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
     ctx = cairo.Context(surf)
     cx, cy = size/2, size/2
@@ -153,17 +153,17 @@ def render_pause_button_asset(size, hover=False):
     
     return cairo_surface_to_pygame(surf)
 
-def render_pause_slab(width, height, title_text="PAUSED"):
+def draw_popup_menu(width, height, title_text="PAUSED"):
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height))
     ctx = cairo.Context(surf)    
     m = 0 
     color_light = hex_to_rgb("#beaa9d") 
     color_shadow = hex_to_rgb("#847666") 
     offset_depth = 15
-    draw_chamfered_rect(ctx, m, m + offset_depth, width, height - offset_depth, 30)
+    draw_button_base(ctx, m, m + offset_depth, width, height - offset_depth, 30)
     ctx.set_source_rgb(*color_shadow)
     ctx.fill()
-    draw_chamfered_rect(ctx, m, m, width, height - offset_depth, 30)
+    draw_button_base(ctx, m, m, width, height - offset_depth, 30)
     ctx.set_source_rgb(*color_light)
     ctx.fill()    
     ctx.set_source_rgb(*color_shadow)
@@ -191,7 +191,7 @@ def render_pause_slab(width, height, title_text="PAUSED"):
 
     return cairo_surface_to_pygame(surf)
 
-def render_colored_button(width, height, text, color_hex, hover=False):
+def draw_colored_button(width, height, text, color_hex, hover=False):
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height + 10))
     ctx = cairo.Context(surf)
     r, g, b = hex_to_rgb(color_hex)
@@ -206,7 +206,7 @@ def render_colored_button(width, height, text, color_hex, hover=False):
     chamfer = 15
     depth = 8
     x, y = 0, 0
-    draw_chamfered_rect(ctx, x, y + depth, width, height, chamfer)
+    draw_button_base(ctx, x, y + depth, width, height, chamfer)
     ctx.set_source_rgb(shadow_r, shadow_g, shadow_b)
     ctx.fill()
 
@@ -214,11 +214,11 @@ def render_colored_button(width, height, text, color_hex, hover=False):
         y += 2
         depth -= 2
         
-    draw_chamfered_rect(ctx, x, y, width, height, chamfer)
+    draw_button_base(ctx, x, y, width, height, chamfer)
     ctx.set_source_rgb(r, g, b)
     ctx.fill()
     ctx.save()
-    draw_chamfered_rect(ctx, x + 5, y + 5, width - 10, height/2 - 5, chamfer)
+    draw_button_base(ctx, x + 5, y + 5, width - 10, height/2 - 5, chamfer)
     ctx.clip()
     pat = cairo.LinearGradient(x, y, x, y + height/2)
     pat.add_color_stop_rgba(0, 1, 1, 1, 0.3)
@@ -227,15 +227,6 @@ def render_colored_button(width, height, text, color_hex, hover=False):
     ctx.rectangle(x, y, width, height)
     ctx.fill()
     ctx.restore()
-
-    def draw_crater(cx, cy):
-        ctx.arc(cx, cy, 3, 0, 2 * math.pi)
-        ctx.set_source_rgb(shadow_r, shadow_g, shadow_b)
-        ctx.fill()
-    
-    draw_crater(x + 15, y + height - 15)
-    draw_crater(x + width - 15, y + 15)
-    ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
     ctx.set_font_size(24) 
     (xb, yb, tw, th, xa, ya) = ctx.text_extents(text)
     text_x = x + (width - tw) / 2 - xb
@@ -249,7 +240,7 @@ def render_colored_button(width, height, text, color_hex, hover=False):
 
     return cairo_surface_to_pygame(surf)
 
-def create_cairo_background(width, height):
+def draw_background_game(width, height):
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height))
     ctx = cairo.Context(surface)
 
@@ -270,7 +261,7 @@ def create_cairo_background(width, height):
         ctx.arc(x, y, rad, 0, 2*math.pi)
         ctx.fill()
 
-    def draw_moss_clump(mx, my, size_base):
+    def draw_moss(mx, my, size_base):
         ctx.save()
         ctx.translate(mx, my)
         particles = int(size_base * 2)
@@ -288,7 +279,7 @@ def create_cairo_background(width, height):
         ctx.restore()
 
     for _ in range(30):
-        draw_moss_clump(random.randint(0, int(width)), random.randint(0, int(height)), 40)
+        draw_moss(random.randint(0, int(width)), random.randint(0, int(height)), 40)
 
     ctx.save()
     ctx.rotate(math.radians(-15))
@@ -321,7 +312,7 @@ def create_cairo_background(width, height):
     surface.flush()
     return cairo_surface_to_pygame(surface)
 
-def render_bins_cairo(width, height, bin_rects, bin_labels):
+def draw_coin_sack(width, height, bin_rects, bin_labels):
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
     ctx = cairo.Context(surface)
 
@@ -440,7 +431,7 @@ def render_bins_cairo(width, height, bin_rects, bin_labels):
 
     return cairo_surface_to_pygame(surface)
 
-def render_falling_block(value):
+def draw_falling_coin(value):
     w, h = 70, 70
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
     ctx = cairo.Context(surf)
