@@ -41,11 +41,17 @@ class FallingNumber:
         self.w = self.image.get_width()
         self.h = self.image.get_height()
 
-    def update(self, dt, move_dir=0):
+    # def update(self, dt, move_dir=0):
+    #     global FALL_SPEED
+    #     self.x += move_dir * MOVE_SPEED * dt
+    #     self.x = max(0, min(WIDTH - self.w, self.x))
+    #     self.y += FALL_SPEED * dt
+
+    def update(self, dt, move_dir=0, speed_multiplier=1):
         global FALL_SPEED
         self.x += move_dir * MOVE_SPEED * dt
-        self.x = max(0, min(WIDTH - self.w, self.x))
-        self.y += FALL_SPEED * dt
+        self.x = max(0, min(WIDTH - self.w, self.x))        
+        self.y += (FALL_SPEED * speed_multiplier) * dt
 
     def draw(self, surf):
         surf.blit(self.image, (self.x, self.y))
@@ -172,14 +178,17 @@ class Game:
             self.lives -= 1
             self.falling = None
 
-    def update(self, dt, move_dir):
+    def update(self, dt, move_dir, is_fast_drop=False):
         global FALL_SPEED
-        self.time_since_last += dt
+        self.time_since_last += dt        
+        speed_mult = 4 if is_fast_drop else 1
+
         if not self.falling and self.time_since_last >= NEW_FALL_INTERVAL:
             self.spawn_falling()
             self.time_since_last = 0
+            
         if self.falling:
-            self.falling.update(dt, move_dir)
+            self.falling.update(dt, move_dir, speed_multiplier=speed_mult)
             self.check_bin_collision()
         
         if self.score > 0 and self.score % 5 == 0:
@@ -188,6 +197,7 @@ class Game:
                 self.speed_level = new_level
                 FALL_SPEED = BASE_FALL_SPEED + (self.speed_level - 1) * 30
                 self.speed_message_timer = 2.0
+
         if self.speed_message_timer > 0:
             self.speed_message_timer -= dt
 
@@ -442,8 +452,6 @@ def main():
                 if event.key == pygame.K_LEFT: game.move_dir = -1
                 elif event.key == pygame.K_RIGHT: game.move_dir = 1
                 elif event.key == pygame.K_r: state = "MENU_OPS"
-                elif event.key == pygame.K_SPACE and game.falling and not paused:
-                    game.falling.y = HEIGHT
                 elif event.key == pygame.K_ESCAPE:
                     if not game.is_game_over(): 
                         paused = not paused
@@ -456,10 +464,11 @@ def main():
         move_dir = 0
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]: move_dir = -1
-        if keys[pygame.K_RIGHT]: move_dir = 1
+        if keys[pygame.K_RIGHT]: move_dir = 1        
+        is_fast_drop = keys[pygame.K_DOWN]
         
         if not paused and not game.is_game_over():
-            game.update(dt, move_dir)
+            game.update(dt, move_dir, is_fast_drop)
 
         game.draw(screen, mouse_pos)
 
